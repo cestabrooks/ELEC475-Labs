@@ -70,7 +70,7 @@ if __name__ == '__main__':
     model = m.autoencoderMLP4Layer()
 
     # data loader
-    train_loader = torch.utils.data.DataLoader(train_set, b, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_set, b, shuffle=True)
     # scheduler
     scheduler = torch.optim.lr_scheduler.StepLR(torch.optim.Adam(model.parameters(), lr=0.001), step_size=5, gamma=0.5)
     # train the model
