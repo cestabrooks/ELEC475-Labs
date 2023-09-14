@@ -7,7 +7,9 @@ import datetime
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torch.utils.data.dataloader as dataloader
+import argparse
 from torchsummary import summary
+
 
 import matplotlib.pyplot as plt
 
@@ -58,22 +60,29 @@ def getMNISTDataset():
 
 if __name__ == '__main__':
     # Get arguments from command line
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-z")
+    parser.add_argument("-e")
+    parser.add_argument("-b")
+    parser.add_argument("-s")
+    parser.add_argument("-p")
+    args = vars(parser.parse_args())
 
-    # arg module makes this easier?
-    z = int(sys.argv[sys.argv.index("-z") + 1])  # bottleneck
-    e = int(sys.argv[sys.argv.index("-e") + 1])  # epoch
-    b = int(sys.argv[sys.argv.index("-b") + 1])  # batch size
-    s = sys.argv[sys.argv.index("-s") + 1]  # generic file type for a parameter file
-    p = sys.argv[sys.argv.index("-p") + 1]  # plot output
+    bottleneck = args["z"]
+    epoch = args["e"]
+    batch = args["b"]
+    parameterFile = args["s"]
+    plotFilePath = args["p"]
 
+    # get training set of data
     train_set = getMNISTDataset()
+    # instantiate model
     model = m.autoencoderMLP4Layer()
-
-    # data loader
-    train_loader = torch.utils.data.DataLoader(train_set, b, shuffle=True)
-    # scheduler
+    # create data loader
+    train_loader = torch.utils.data.DataLoader(train_set, batch, shuffle=True)
+    # create scheduler
     scheduler = torch.optim.lr_scheduler.StepLR(torch.optim.Adam(model.parameters(), lr=0.001), step_size=5, gamma=0.5)
     # train the model
-    train(e, torch.optim.Adam(model.parameters(), lr=0.001), model, nn.MSELoss(), train_loader, scheduler, "cpu")
-    # args model, shape of input data
-    summary(model, (1, 784), batch_size=b, device="cpu")
+    train(epoch, torch.optim.Adam(model.parameters(), lr=0.001), model, nn.MSELoss(), train_loader, scheduler, "cpu")
+    # summarize the output
+    summary(model, (1, 784), batch_size=batch, device="cpu")
