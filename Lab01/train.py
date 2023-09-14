@@ -13,7 +13,7 @@ from torchsummary import summary
 
 import matplotlib.pyplot as plt
 
-def train(n_epochs, optimizer, model, loss_fn, train_loader, scheduler, device):
+def train(n_epochs, optimizer, model, loss_fn, train_loader, scheduler, device, plot_file=None, save_file=None):
     print('training...')
     model.train()
     losses_train = []
@@ -50,6 +50,17 @@ def train(n_epochs, optimizer, model, loss_fn, train_loader, scheduler, device):
 
         print('{} Epoch {}, Training loss {}'.format(datetime.datetime.now(), epoch, loss_train / len(train_loader)))
 
+    # plot the losses_train
+    if save_file != None:
+        torch.save(model.state_dict(), save_file)
+    if plot_file != None:
+        plt.figure(2, figsize=(12, 7))
+        plt.clf()
+        plt.plot(losses_train, label='train')
+        plt.xlabel('epoch')
+        plt.ylabel('loss')
+        plt.legend(loc=1)
+        plt.savefig(plot_file)
 
 def getMNISTDataset():
     train_transform = transforms.Compose([transforms.ToTensor()])
@@ -68,9 +79,9 @@ if __name__ == '__main__':
     parser.add_argument("-p")
     args = vars(parser.parse_args())
 
-    bottleneck = args["z"]
-    epoch = args["e"]
-    batch = args["b"]
+    bottleneck = int(args["z"])
+    epoch = int(args["e"])
+    batch = int(args["b"])
     parameterFile = args["s"]
     plotFilePath = args["p"]
 
@@ -83,6 +94,6 @@ if __name__ == '__main__':
     # create scheduler
     scheduler = torch.optim.lr_scheduler.StepLR(torch.optim.Adam(model.parameters(), lr=0.001), step_size=5, gamma=0.5)
     # train the model
-    train(epoch, torch.optim.Adam(model.parameters(), lr=0.001), model, nn.MSELoss(), train_loader, scheduler, "cpu")
+    train(epoch, torch.optim.Adam(model.parameters(), lr=0.001), model, nn.MSELoss(), train_loader, scheduler, "cpu", plotFilePath, parameterFile)
     # summarize the output
     summary(model, (1, 784), batch_size=batch, device="cpu")
