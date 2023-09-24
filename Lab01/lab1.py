@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 import argparse
 import torch
 import model as m
+import bottleneck_model
 import torch.nn as nn
-import numpy as np
-import torch.nn.functional as F
+
 
 
 def eval(model, loss_fn, loader, device):
@@ -101,7 +101,35 @@ def eval_with_noise(model, loss_fn, noise_loader, test_loader, device):
 
             count += 1
 
+def eval_bottleneck_model(model, loader, device):
+    model.eval()
+    with torch.no_grad():
+        for img_pair, label in loader:
 
+            # print(img_pair[0])
+            # print(img_pair[1])
+            flattendImg1 = torch.flatten(img_pair[0], start_dim=1)  # flatten the images to the correct size
+            flattendImg2 = torch.flatten(img_pair[1], start_dim=1)
+            # Cast to 32-bit float
+            flattendImg1.type('torch.FloatTensor')
+            flattendImg2.type('torch.FloatTensor')
+            # Ensure that the flattened images are on the correct device
+            flattendImg1.to(device=device)
+            flattendImg2.to(device=device)
+
+            output = model.forward(flattendImg1, flattendImg2, 8)
+
+            # display output
+            f = plt.figure()
+            for i in range(0, len(output)):
+                f.add_subplot(1, len(output), i + 1)
+                # reformat output to a (28, 28) tensor
+                unflattened = output[i].reshape((28, 28))
+
+                plt.imshow(unflattened, cmap='gray')
+
+            plt.show()
+            break
 
 def getMNISTDataset():
     test_transform = transforms.Compose([transforms.ToTensor()])
@@ -115,7 +143,9 @@ def getMNISTDatasetWithNoise():
             self.std = std
 
         def __call__(self, tensor):
-            return tensor + torch.randn(tensor.size()) * self.std
+            result = tensor + torch.randn(tensor.size()) * self.std
+            # result = torch.clamp(result, 0, 1)
+            return result
 
     noise_transform = transforms.Compose(
         [transforms.ToTensor(),
@@ -143,6 +173,7 @@ if __name__ == '__main__':
     # create data loader
     test_loader = torch.utils.data.DataLoader(test_set, shuffle=False)
     noise_loader = torch.utils.data.DataLoader(noise_set, shuffle=False)
+    bottleneck_loader = torch.utils.data.DataLoader(test_set, 2, shuffle=True)
     print("Step 4: Testing Autoencoder Output ------------------ ")
     print("This test will show three input/output pairs as done \n" +
           "in the Lab outline. Close the window to see the next \n" +
@@ -156,4 +187,14 @@ if __name__ == '__main__':
           "autoencoder when using the noised image.\n\n" +
           "Will continue to Step 6 after closing the window.\n")
     eval_with_noise(model, nn.MSELoss(), noise_loader, test_loader, "cpu")
+
+    print("Step 6: Bottleneck Interpolation ------------------ ")
+    print("This test will show an example of a bottleneck tensor \n" +
+          "being linearly interpolated between 2 input images for\n" +
+          "8 steps. The bottlenecks are then decoded and the resulting\n"
+          "images are shown.\n\n" +
+          "Will exit the program after closing the window.\n")
+    bn_model = bottleneck_model.autoencoderMLP4Layer_bottleneck()
+    bn_model.load_state_dict(torch.load(parameters_file))
+    eval_bottleneck_model(bn_model, bottleneck_loader, "cpu")
 
