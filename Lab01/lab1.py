@@ -191,6 +191,9 @@ if __name__ == '__main__':
           "being linearly interpolated between 2 input images for\n" +
           "8 steps. The bottlenecks are then decoded and the resulting\n"
           "images are shown.\n\n" +
+          "Note: If the start and end images are the same number,\n" +
+          "please run the program again. It's just unlucky shuffling\n" +
+          "of the dataset!\n\n" +
           "Will exit the program after closing the window.\n")
     bn_model = bottleneck_model.autoencoderMLP4Layer_bottleneck()
     bn_model.load_state_dict(torch.load(parameters_file))
