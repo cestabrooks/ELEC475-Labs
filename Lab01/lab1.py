@@ -10,8 +10,6 @@ import model as m
 import bottleneck_model
 import torch.nn as nn
 
-
-
 def eval(model, loss_fn, loader, device):
     model.eval()
     loss_fn = loss_fn
@@ -105,7 +103,6 @@ def eval_bottleneck_model(model, loader, device):
     model.eval()
     with torch.no_grad():
         for img_pair, label in loader:
-
             # print(img_pair[0])
             # print(img_pair[1])
             flattendImg1 = torch.flatten(img_pair[0], start_dim=1)  # flatten the images to the correct size
@@ -170,10 +167,11 @@ if __name__ == '__main__':
     # instantiate model
     model = m.autoencoderMLP4Layer()
     model.load_state_dict(torch.load(parameters_file))
-    # create data loader
+    # create data loaders
     test_loader = torch.utils.data.DataLoader(test_set, shuffle=False)
     noise_loader = torch.utils.data.DataLoader(noise_set, shuffle=False)
     bottleneck_loader = torch.utils.data.DataLoader(test_set, 2, shuffle=True)
+
     print("Step 4: Testing Autoencoder Output ------------------ ")
     print("This test will show three input/output pairs as done \n" +
           "in the Lab outline. Close the window to see the next \n" +

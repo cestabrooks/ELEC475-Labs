@@ -8,10 +8,19 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torch.utils.data.dataloader as dataloader
 import argparse
-from torchsummary import summary
-
-
 import matplotlib.pyplot as plt
+
+if torch.has_mps:
+    # Need to use torchinfo library for the summary if you want to train on Apple Silicon.
+    # The torchsummary library suggested in the lab hasn't been updated in 5 years, and
+    # doesn't support "mps" as the device
+    from torchinfo import summary
+else:
+    from torchsummary import summary
+
+device = "cpu"
+if torch.has_mps:
+    device = "mps"
 
 def train(n_epochs, optimizer, model, loss_fn, train_loader, scheduler, device, plot_file=None, save_file=None):
     print('training...')
@@ -94,6 +103,10 @@ if __name__ == '__main__':
     # create scheduler
     scheduler = torch.optim.lr_scheduler.StepLR(torch.optim.Adam(model.parameters(), lr=0.001), step_size=5, gamma=0.5)
     # train the model
-    train(epoch, torch.optim.Adam(model.parameters(), lr=0.001), model, nn.MSELoss(), train_loader, scheduler, "cpu", plotFilePath, parameterFile)
+    train(epoch, torch.optim.Adam(model.parameters(), lr=0.001), model, nn.MSELoss(), train_loader, scheduler, device, plotFilePath, parameterFile)
+
     # summarize the output
-    summary(model, (1, 784), batch_size=batch, device="cpu")
+    if torch.has_mps:
+        summary(model, (1, 784), device=device)
+    else:
+        summary(model, (1, 784), batch_size=batch, device=device)
