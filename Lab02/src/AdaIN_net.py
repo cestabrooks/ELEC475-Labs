@@ -145,16 +145,55 @@ class AdaIN_net(nn.Module):
         feat_mean = feat.view(N, C, -1).mean(dim=2).view(N, C, 1, 1)
         return feat_mean, feat_std
 
+    # Our functions -----
+
+
+    # -------------------
+
     def forward(self, content, style, alpha=1.0):
         assert 0 <= alpha <= 1
+
+        #   calculate Eq. (12) and Eq. (13), and return L_c and L_s from Eq. (11)
+        #
+        #   your code here ...
+
+        # pass style thrpugh each all stages of encoder and peek in at 4 spots
+        # so we can see what's happening in the hidden layers
+        # styleLayerOutputs = []  # rename?
+        # styleLayerOutputs.append(self.encoder_stage_1(style))
+        # styleLayerOutputs.append(self.encoder_stage_2(styleLayerOutputs[-1]))
+        # styleLayerOutputs.append(self.encoder_stage_3(styleLayerOutputs[-1]))
+        # styleLayerOutputs.append(self.encoder_stage_4(styleLayerOutputs[-1]))
+        #
+        style_encoded_hidden_layers = self.encode(style)
+
+        # pass content through each 4 stage of encoder. dont need to
+        # save in between
+        content_encoded = self.encode(content)[-1]
+
+        # calculate mean and std of all contents and only the final output style
+        # from the encoder (don't need hidden stuff yet)
+        # isntance normalization of content and shift into the style domain
+        t = (1 - alpha)*content_encoded + alpha * self.adain(content_encoded, style_encoded_hidden_layers[-1])
+
+        #output of stylized content image
+        g_t = self.decoder(t)
+
         if self.training:  # training
-            #   calculate Eq. (12) and Eq. (13), and return L_c and L_s from Eq. (11)
-            #
-            #   your code here ...
+            g_t_encoded_hidden_layers = self.encode(g_t)
+
+            loss_c = self.content_loss(g_t_encoded_hidden_layers[-1], t)
+
+            # Need to get scalar number from each step (since tensors are not same size and get smaller as it
+            # goes forward through the model)
+            loss_s = 0
+            for i in range(0,4):
+                loss_s += self.style_loss(g_t_encoded_hidden_layers[i], style_encoded_hidden_layers[i])
 
             return loss_c, loss_s
+
         else:  # inference
             #
             #   your code here ...
 
-            return self.decode(feat)
+            return g_t
