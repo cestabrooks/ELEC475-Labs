@@ -63,9 +63,13 @@ if __name__ == '__main__':
 
     print("Starting training...")
     losses = []
+    style_losses = []
+    content_losses = []
     for epoch in range(n_epoch):
         print('epoch ', epoch)
         loss_train = 0.0
+        style_loss_train = 0.0
+        content_loss_train = 0.0
         for batch in range(1, n_batch):
             print("batch ", batch)
             content_images = next(iter(content_dataloader)).to(device)
@@ -79,8 +83,12 @@ if __name__ == '__main__':
             optimizer.step()
 
             loss_train += loss.item()
+            content_loss_train += loss_c.item()
+            style_loss_train += loss_s.item()
 
         losses += [loss_train / n_batch]
+        style_losses += [style_loss_train / n_batch]
+        content_losses += [content_loss_train / n_batch]
         scheduler.step()
 
         print('{} Epoch {}, Training loss {}'.format(datetime.datetime.now(), epoch, loss_train / n_batch))
@@ -91,7 +99,9 @@ if __name__ == '__main__':
     if loss_plot is not None:
         plt.figure(2, figsize=(12, 7))
         plt.clf()
-        plt.plot(losses, label='train')
+        plt.plot(losses, label='content+style')
+        plt.plot(content_losses, label='content')
+        plt.plot(style_losses, label="style")
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.legend(loc=1)
