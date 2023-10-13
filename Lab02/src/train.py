@@ -7,6 +7,14 @@ import torch.utils.data
 import datetime
 import matplotlib.pyplot as plt
 
+learning_rate = 1e-4
+learning_rate_decay = 5e-5
+def adjust_learning_rate(optimizer, iteration_count):
+    """Imitating the original implementation"""
+    lr = learning_rate / (1.0 + learning_rate_decay * iteration_count)
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
 if __name__ == '__main__':
     # Get arguments from command line
     parser = argparse.ArgumentParser()
@@ -46,20 +54,20 @@ if __name__ == '__main__':
 
     content_dataset = custom_dataset(args["content_dir"], transform)
     style_dataset = custom_dataset(args["style_dir"], transform)
+    print("Dataset size: ", len(content_dataset))
 
     content_dataloader = torch.utils.data.DataLoader(
         dataset=content_dataset,
-        batch_size=int(100/n_batch),
+        batch_size=int(len(content_dataset)/n_batch),
         shuffle=True
     )
     style_dataloader = torch.utils.data.DataLoader(
         dataset=style_dataset,
-        batch_size=int(100/n_batch),
+        batch_size=int(len(style_dataset)/n_batch),
         shuffle=True
     )
 
-    optimizer = torch.optim.Adam(encoder_decoder.decoder.parameters(), lr=0.001)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+    optimizer = torch.optim.Adam(encoder_decoder.decoder.parameters(), lr=learning_rate)
 
     print("Starting training...")
     losses = []
@@ -67,6 +75,7 @@ if __name__ == '__main__':
     content_losses = []
     for epoch in range(n_epoch):
         print('epoch ', epoch)
+        adjust_learning_rate(optimizer, iteration_count=epoch)
         loss_train = 0.0
         style_loss_train = 0.0
         content_loss_train = 0.0
@@ -76,6 +85,8 @@ if __name__ == '__main__':
             style_images = next(iter(style_dataloader)).to(device)
 
             loss_c, loss_s = model.forward(content_images, style_images)
+            loss_c *= 1.0
+            loss_s *= 3.0
             loss = loss_c + loss_s
 
             optimizer.zero_grad()
@@ -89,7 +100,6 @@ if __name__ == '__main__':
         losses += [loss_train / n_batch]
         style_losses += [style_loss_train / n_batch]
         content_losses += [content_loss_train / n_batch]
-        scheduler.step()
 
         print('{} Epoch {}, Training loss {}'.format(datetime.datetime.now(), epoch, loss_train / n_batch))
 
