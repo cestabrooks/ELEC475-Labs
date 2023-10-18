@@ -1,11 +1,11 @@
 import argparse
-import torch
 import AdaIN_net
 from torchvision import transforms
 from custom_dataset import custom_dataset
 import torch.utils.data
 import datetime
 import matplotlib.pyplot as plt
+from PIL import Image
 
 learning_rate = 1e-4
 learning_rate_decay = 5e-5
@@ -30,6 +30,7 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
+    gamma = float(args["gamma"])
     n_epoch = int(args["e"])
     n_batch = int(args["b"])
     encoder_pth = args["l"]
@@ -41,20 +42,32 @@ if __name__ == '__main__':
     encoder_decoder = AdaIN_net.encoder_decoder()
     encoder_decoder.encoder.load_state_dict(torch.load(encoder_pth))
 
+    # Loading previous decoder state
+    completed_epochs = 0
+    if "_" in decoder_pth:
+        print("Loading decoder: " + decoder_pth)
+        # Load the decoder weights
+        encoder_decoder.decoder.load_state_dict(torch.load(decoder_pth))
+        # Subtract from the required number of epochs remaining
+        completed_epochs = int(decoder_pth.split("_")[1].split('.')[0]) + 1
+
     model = AdaIN_net.AdaIN_net(encoder_decoder.encoder, encoder_decoder.decoder)
 
     model.train()
     model.to(device)
 
+
     transform = transforms.Compose([
-        transforms.Resize(size=(512, 512)),
+        transforms.Resize(size=(512,512), interpolation=Image.BICUBIC),
         transforms.RandomCrop(256),
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     content_dataset = custom_dataset(args["content_dir"], transform)
     style_dataset = custom_dataset(args["style_dir"], transform)
     print("Dataset size: ", len(content_dataset))
+    print("Batch size: ", int(len(content_dataset)/n_batch))
 
     content_dataloader = torch.utils.data.DataLoader(
         dataset=content_dataset,
@@ -73,7 +86,7 @@ if __name__ == '__main__':
     losses = []
     style_losses = []
     content_losses = []
-    for epoch in range(n_epoch):
+    for epoch in range(completed_epochs, n_epoch):
         print('epoch ', epoch)
         adjust_learning_rate(optimizer, iteration_count=epoch)
         loss_train = 0.0
@@ -84,7 +97,7 @@ if __name__ == '__main__':
             content_images = next(iter(content_dataloader)).to(device)
             style_images = next(iter(style_dataloader)).to(device)
 
-            loss_c, loss_s = model.forward(content_images, style_images)
+            loss_c, loss_s = model.forward(content_images, style_images, gamma)
             loss_c *= 1.0
             loss_s *= 3.0
             loss = loss_c + loss_s
@@ -102,6 +115,11 @@ if __name__ == '__main__':
         content_losses += [content_loss_train / n_batch]
 
         print('{} Epoch {}, Training loss {}'.format(datetime.datetime.now(), epoch, loss_train / n_batch))
+
+        # save the decoder
+        path = "decoder_" + str(epoch) + ".pth"
+        print("Saving decoder to: " + path)
+        torch.save(model.decoder.state_dict(), path)
 
     # plot the losses_train
     if decoder_pth is not None:
