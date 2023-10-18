@@ -97,10 +97,8 @@ if __name__ == '__main__':
             content_images = next(iter(content_dataloader)).to(device)
             style_images = next(iter(style_dataloader)).to(device)
 
-            loss_c, loss_s = model.forward(content_images, style_images, gamma)
-            loss_c *= 1.0
-            loss_s *= 3.0
-            loss = loss_c + loss_s
+            loss_c, loss_s = model.forward(content_images, style_images)
+            loss = loss_c + gamma * loss_s
 
             optimizer.zero_grad()
             loss.backward()
