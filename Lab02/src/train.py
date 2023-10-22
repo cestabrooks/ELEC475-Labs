@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument("-s")
     parser.add_argument("-p")
     parser.add_argument("-cuda")
+    parser.add_argument("-mps")
 
     args = vars(parser.parse_args())
 
@@ -36,8 +37,11 @@ if __name__ == '__main__':
     encoder_pth = args["l"]
     decoder_pth = args["s"]
     loss_plot = args["p"]
-    device = "cuda" if str(args["cuda"]).upper() == "Y" else "cpu"  # change to cpu
-
+    device = "cpu"
+    if str(args["cuda"]).upper() == "Y":
+        device = "cuda"
+    elif str(args["mps"]).upper() == "Y":
+        device = "mps"
     print("Creating model and loading data")
     encoder_decoder = AdaIN_net.encoder_decoder()
     encoder_decoder.encoder.load_state_dict(torch.load(encoder_pth))
@@ -81,6 +85,17 @@ if __name__ == '__main__':
     )
 
     optimizer = torch.optim.Adam(encoder_decoder.decoder.parameters(), lr=learning_rate)
+    loss_file = None
+    if "_" in decoder_pth:
+        print("Loading optimizer...")
+        # Load the optimizer
+        optimizer.load_state_dict(torch.load("./history/optimizer_" + str(completed_epochs - 1) + ".pth"))
+        learning_rate = optimizer.param_groups[0]['lr']
+        print("   Resume learning rate at", optimizer.param_groups[0]['lr'])
+
+        loss_file = file = open("./history/losses", "a+")
+    else:
+        loss_file = open("./history/losses", "w")
 
     print("Starting training...")
     losses = []
@@ -115,9 +130,14 @@ if __name__ == '__main__':
         print('{} Epoch {}, Training loss {}'.format(datetime.datetime.now(), epoch, loss_train / n_batch))
 
         # save the decoder
-        path = "decoder_" + str(epoch) + ".pth"
+        path = "./history/decoder_" + str(epoch) + ".pth"
+        opt_path = "./history/optimizer_" + str(epoch) + ".pth"
         print("Saving decoder to: " + path)
+        print("Saving optimizer to: " + opt_path)
         torch.save(model.decoder.state_dict(), path)
+        torch.save(optimizer.state_dict(), opt_path)
+
+        loss_file.write(str(losses[-1]) + " " + str(style_losses[-1]) + " " + str(content_losses[-1]) + "\n")
 
     # plot the losses_train
     if decoder_pth is not None:
