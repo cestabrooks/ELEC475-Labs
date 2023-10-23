@@ -1,12 +1,6 @@
-#	python3 train.py -content_dir ./../../../datasets/COCO10k/ -style_dir ./../../../datasets/wikiart10k/ -gamma 1.0 -e 20 -b 32 -l encoder.pth -s decoder.pth -p decoder.png
-python3 train.py -content_dir ./../../../datasets/COCO100/ -style_dir ./../../../datasets/wikiart100/ -gamma 1.0 -e 20 -b 20 -l encoder.pth -s decoder.pth -p decoder.png -cuda Y
 
-Connor's cli
-python train.py -content_dir ./../datasets/COCO100/ -style_dir ./../datasets/wikiart100/ -gamma 1.0 -e 20 -b 20 -l encoder.pth -s decoder.pth -p decoder.png -cuda N
+Colab 1k training
+python train.py -content_dir ./../datasets/COCO1k/ -style_dir ./../datasets/wikiart1k/ -gamma 1.0 -e 20 -b 64 -l encoder.pth -s decoder.pth -p decoder.png -cuda Y -mps N
 
-
-Colab cli
-python train.py -content_dir ./../datasets/COCO1k/ -style_dir ./../datasets/wikiart1k/ -gamma 1.0 -e 20 -b 200 -l encoder.pth -s decoder.pth -p decoder.png -cuda Y
-
-python train.py -content_dir ./../datasets/COCO10k/ -style_dir ./../datasets/wikiart10k/ -gamma 1.0 -e 20 -b 2000 -l encoder.pth -s decoder.pth -p decoder.png -cuda Y
-
+MacBook Pro 10k training
+python train.py -content_dir ./../datasets/COCO10k/ -style_dir ./../datasets/wikiart10k/ -gamma 1.0 -e 20 -b 200 -l encoder.pth -s decoder.pth -p decoder.png -cuda N -mps Y
