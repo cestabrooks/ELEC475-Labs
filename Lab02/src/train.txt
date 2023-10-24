@@ -1,6 +1,6 @@
 
-Colab 1k training
+# Colab 1k training
 python train.py -content_dir ./../datasets/COCO1k/ -style_dir ./../datasets/wikiart1k/ -gamma 1.0 -e 20 -b 64 -l encoder.pth -s decoder.pth -p decoder.png -cuda Y -mps N
 
-MacBook Pro 10k training
+# MacBook Pro 10k training
 python train.py -content_dir ./../datasets/COCO10k/ -style_dir ./../datasets/wikiart10k/ -gamma 1.0 -e 20 -b 200 -l encoder.pth -s decoder.pth -p decoder.png -cuda N -mps Y

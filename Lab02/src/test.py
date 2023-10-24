@@ -22,7 +22,7 @@ if __name__ == '__main__':
 	opt = parser.parse_args()
 	content_image = Image.open(opt.content_image)
 	style_image = Image.open(opt.style_image)
-	output_format = opt.content_image[opt.content_image.find('.'):]
+	output_format = opt.content_image[opt.content_image.rfind('.'):]
 	decoder_file = opt.decoder_file
 	encoder_file = opt.encoder_file
 	alpha = opt.alpha
@@ -61,8 +61,8 @@ if __name__ == '__main__':
 	with torch.no_grad():
 		out_tensor = model(input_tensor, style_tensor, alpha)
 
-	save_file = out_dir + opt.content_image[opt.content_image.rfind('/')+1: opt.content_image.find('.')] \
-							+"_style_"+ opt.style_image[opt.style_image.rfind('/')+1: opt.style_image.find('.')] \
+	save_file = out_dir + opt.content_image[opt.content_image.rfind('/')+1: opt.content_image.rfind('.')] \
+							+"_style_"+ opt.style_image[opt.style_image.rfind('/')+1: opt.style_image.rfind('.')] \
 							+ "_alpha_" + str(alpha) \
 							+ output_format
 	print('saving output file: ', save_file)
