@@ -6,6 +6,7 @@ import torch.utils.data
 import datetime
 import matplotlib.pyplot as plt
 from PIL import Image
+import os
 
 learning_rate = 1e-4
 learning_rate_decay = 5e-5
@@ -86,6 +87,7 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(encoder_decoder.decoder.parameters(), lr=learning_rate)
     loss_file = None
+    os.makedirs("./history/", exist_ok=True)
     if "_" in decoder_pth:
         print("Loading optimizer...")
         # Load the optimizer
@@ -93,9 +95,9 @@ if __name__ == '__main__':
         learning_rate = optimizer.param_groups[0]['lr']
         print("   Resume learning rate at", optimizer.param_groups[0]['lr'])
 
-        loss_file = file = open("./history/losses", "a+")
+        loss_file = file = open("./history/losses.txt", "a+")
     else:
-        loss_file = open("./history/losses", "w")
+        loss_file = open("./history/losses.txt", "w")
 
     print("Starting training...")
     losses = []
