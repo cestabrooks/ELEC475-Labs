@@ -76,7 +76,7 @@ class classifier(nn.Module):
         # Reduce the channel depth
         X = self.one_d_conv(X)
         # Flatten the tensor so it can fit in the FC layers
-        X = torch.flatten(X)
+        X = torch.flatten(X, start_dim=1)
 
         # FC layers for classification
         X = self.fc1(X)

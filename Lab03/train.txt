@@ -1,0 +1,1 @@
+python train.py -e 20 -b 500 -encoder encoder.pth -save classifier.pth -plot loss.png -cuda N -mps N
