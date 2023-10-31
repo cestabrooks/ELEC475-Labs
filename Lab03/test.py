@@ -26,18 +26,26 @@ def evaluate(model, data_loader):
     model.eval()
     top_one = 0
     top_five = 0
+    total = 0
     with torch.no_grad():
-        for image, label in data_loader:
-            output = model.forward(image)
-            # calculate top-1 error rate
-            prediction = torch.argmax(output, dim=1)
-            top_one += (prediction == label).sum().item()
-            # calculate top-5 error rate
-            top_five_output = torch.topk(output, 5)
-            top_five += (label in top_five_output).sum().item()
+        for images, labels in data_loader:
+            print(total)
+            output = model.forward(images)
 
-    top_one_accuracy = top_one/len(data_loader)
-    top_five_accuracy = top_five/len(data_loader)
+            # calculate top-1 error rate
+            predictions = torch.argmax(output, dim=1)
+            # calculate top-5 error rate
+            top_five_output = torch.topk(output, 5, dim=1).indices
+
+            for batch in range(0, len(images)):
+                total += 1
+                if labels[batch] == predictions[batch]:
+                    top_one += 1
+                if labels[batch] in top_five_output[batch]:
+                    top_five += 1
+
+    top_one_accuracy = top_one/total
+    top_five_accuracy = top_five/total
     top_one_error = (1-top_one_accuracy) * 100
     top_five_error = (1-top_five_accuracy) * 100
     print("Top one error: ", top_one_error)
@@ -52,11 +60,12 @@ if __name__ == "__main__":
     classifier_pth = args["classifier"]
 
     print("Creating model and loading data")
-    encoder = model.encoder_vanilla
+    encoder = model.encoder
     model = model.classifier(100, encoder)
     model.load_state_dict(torch.load(classifier_pth))
 
     test_set = getCIFAR_100_Dataset()
-    data_loader = torch.utils.data.DataLoader(test_set, shuffle=False)
+    data_loader = torch.utils.data.DataLoader(test_set, shuffle=False, batch_size=32)
+    print("Dataset size: ", len(data_loader))
 
     evaluate(model, data_loader)
