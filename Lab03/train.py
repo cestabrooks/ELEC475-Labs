@@ -1,12 +1,18 @@
 import argparse
-import model
+import model as m
 import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torchsummary import summary
 import matplotlib.pyplot as plt
 import datetime
-
+if torch.has_mps:
+    # Need to use torchinfo library for the summary if you want to train on Apple Silicon.
+    # The torchsummary library suggested in the lab hasn't been updated in 5 years, and
+    # doesn't support "mps" as the device
+    from torchinfo import summary
+else:
+    from torchsummary import summary
 
 def getCIFAR_10_Dataset():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -20,7 +26,7 @@ def getCIFAR_100_Dataset():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.225, 0.225, 0.225])
     transform = transforms.Compose([transforms.ToTensor(), normalize])
-    train_set = datasets.CIFAR100('./data/cifar_10', train=True, download=True, transform=transform)
+    train_set = datasets.CIFAR100('./data/cifar_100', train=True, download=True, transform=transform)
     return train_set
 
 
@@ -86,6 +92,7 @@ if __name__ == "__main__":
     parser.add_argument("-plot")
     parser.add_argument("-cuda")
     parser.add_argument("-mps")
+    parser.add_argument("-mod")
 
     args = vars(parser.parse_args())
 
@@ -99,11 +106,20 @@ if __name__ == "__main__":
         device = "cuda"
     elif str(args["mps"]).upper() == "Y":
         device = "mps"
+    mod = False
+    if str(args["mod"]).upper() == "Y":
+        mod = True
 
     print("Creating model and loading data")
-    encoder = model.encoder
-    encoder.load_state_dict(torch.load(encoder_pth))
-    model = model.classifier(10, encoder)
+    encoder = None
+    model = None
+    if mod:
+        encoder = m.encoder_mod
+        model = m.classifier(10, encoder, False)
+    else:
+        encoder = m.encoder_vanilla
+        encoder.load_state_dict(torch.load(encoder_pth))
+        model = m.classifier(10, encoder, True)
 
     train_set = getCIFAR_10_Dataset()
     data_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -114,4 +130,8 @@ if __name__ == "__main__":
 
     train(model, optimizer_SGD, n_epoch, torch.nn.CrossEntropyLoss(), data_loader, device, loss_plot, save_pth)
 
-    summary(model, (3, 32, 32), batch_size=batch_size, device=device)
+    # summarize the output
+    if torch.has_mps:
+        summary(model, (3, 32, 32), device=device)
+    else:
+        summary(model, (3, 32, 32), batch_size=batch_size, device=device)

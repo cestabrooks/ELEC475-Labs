@@ -1,0 +1,1 @@
+python train.py -e 75 -b 32 -save nn_mod.pth -plot loss_mod.png -cuda Y -mps N -mod Y

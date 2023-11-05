@@ -1,0 +1,1 @@
+python train.py -e 75 -b 32 -encoder encoder.pth -save nn_vanilla.pth -plot loss_vanilla.png -cuda Y -mps N -mod N
