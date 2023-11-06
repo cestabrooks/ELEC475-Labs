@@ -119,6 +119,7 @@ encoder_mod = nn.Sequential(
         # nn.Conv2d(64, 64, (3, 3)),
         # nn.ReLU(),  # relu1-2
         ResidualBlock_2(64),
+        ResidualBlock_2(64),
         nn.MaxPool2d((2, 2), (2, 2), (0, 0), ceil_mode=True),
         nn.ReflectionPad2d((1, 1, 1, 1)),
         nn.Conv2d(64, 128, (3, 3)),
@@ -126,6 +127,8 @@ encoder_mod = nn.Sequential(
         # nn.ReflectionPad2d((1, 1, 1, 1)),
         # nn.Conv2d(128, 128, (3, 3)),
         # nn.ReLU(),  # relu2-2
+        ResidualBlock_2(128),
+        ResidualBlock_2(128),
         ResidualBlock_2(128),
         nn.MaxPool2d((2, 2), (2, 2), (0, 0), ceil_mode=True),
         nn.ReflectionPad2d((1, 1, 1, 1)),
@@ -141,10 +144,22 @@ encoder_mod = nn.Sequential(
         # nn.Conv2d(256, 256, (3, 3)),
         # nn.ReLU(),  # relu3-4
         ResidualBlock_3(256),
+        ResidualBlock_3(256),
+        ResidualBlock_3(256),
+        ResidualBlock_3(256),
         nn.MaxPool2d((2, 2), (2, 2), (0, 0), ceil_mode=True),
         nn.ReflectionPad2d((1, 1, 1, 1)),
         nn.Conv2d(256, 512, (3, 3)),
-        nn.ReLU(),  # relu4-1, this is the last layer used
+        nn.ReLU(),  # relu4-1
+        ResidualBlock_3(512),
+        ResidualBlock_3(512),
+        ResidualBlock_3(512),
+        ResidualBlock_3(512),
+        # nn.MaxPool2d((2, 2), (2, 2), (0, 0), ceil_mode=True), # --- This was messing up size going into 4096 FC layer ----
+        # nn.ReflectionPad2d((1, 1, 1, 1)),
+        # nn.Conv2d(512, 512, (3, 3)),                          # ----------------------------------------------------------
+        nn.ReLU(),  # relu5-1
+        # nn.AvgPool2d((2, 2), (2, 2), (0, 0), ceil_mode=True) #ResNet uses AvgPool at end... should we?
 )
 
 
@@ -183,6 +198,7 @@ class classifier(nn.Module):
         X = self.encoder(X)
         # Reduce the channel depth
         X = self.one_d_conv(X)
+        X = torch.relu(X)
         # Flatten the tensor so it can fit in the FC layers
         X = torch.flatten(X, start_dim=1)
 
