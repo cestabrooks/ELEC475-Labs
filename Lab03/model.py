@@ -52,11 +52,12 @@ class ResidualBlock_2(nn.Module):
         self.conv1 = nn.Sequential(
             nn.ReflectionPad2d((1, 1, 1, 1)),
             nn.Conv2d(c, c, kernel_size=(3, 3), stride=1),
+            nn.BatchNorm2d(c),
             nn.ReLU())
         self.conv2 = nn.Sequential(
             nn.ReflectionPad2d((1, 1, 1, 1)),
             nn.Conv2d(c, c, kernel_size=(3, 3), stride=1),
-            nn.ReLU())
+            nn.BatchNorm2d(c))
 
         self.relu = nn.ReLU(inplace=True)
 
@@ -82,15 +83,17 @@ class ResidualBlock_3(nn.Module):
         self.conv1 = nn.Sequential(
             nn.ReflectionPad2d((1, 1, 1, 1)),
             nn.Conv2d(c, c, kernel_size=(3, 3), stride=1),
+            nn.BatchNorm2d(c),
             nn.ReLU())
         self.conv2 = nn.Sequential(
             nn.ReflectionPad2d((1, 1, 1, 1)),
             nn.Conv2d(c, c, kernel_size=(3, 3), stride=1),
+            nn.BatchNorm2d(c),
             nn.ReLU())
         self.conv3 = nn.Sequential(
             nn.ReflectionPad2d((1, 1, 1, 1)),
             nn.Conv2d(c, c, kernel_size=(3, 3), stride=1),
-            nn.ReLU())
+            nn.BatchNorm2d(c))
 
         self.relu = nn.ReLU(inplace=True)
 

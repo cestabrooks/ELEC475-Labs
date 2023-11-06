@@ -93,6 +93,7 @@ if __name__ == "__main__":
     parser.add_argument("-cuda")
     parser.add_argument("-mps")
     parser.add_argument("-mod")
+    parser.add_argument("-cifar10")
 
     args = vars(parser.parse_args())
 
@@ -109,29 +110,37 @@ if __name__ == "__main__":
     mod = False
     if str(args["mod"]).upper() == "Y":
         mod = True
+    num_classes = 100
+    if str(args["cifar10"]).upper() == "Y":
+        num_classes = 10
 
     print("Creating model and loading data")
     encoder = None
     model = None
     if mod:
         encoder = m.encoder_mod
-        model = m.classifier(10, encoder, False)
+        model = m.classifier(num_classes, encoder, False)
     else:
         encoder = m.encoder_vanilla
         encoder.load_state_dict(torch.load(encoder_pth))
-        model = m.classifier(10, encoder, True)
+        model = m.classifier(num_classes, encoder, True)
 
-    train_set = getCIFAR_10_Dataset()
+    train_set = None
+    if num_classes == 10:
+        train_set = getCIFAR_10_Dataset()
+    else:
+        train_set = getCIFAR_100_Dataset()
+
     data_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
     print("Dataset size: ", len(train_set))
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    optimizer_SGD = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
+    optimizer_SGD = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.001)
 
     train(model, optimizer_SGD, n_epoch, torch.nn.CrossEntropyLoss(), data_loader, device, loss_plot, save_pth)
 
     # summarize the output
     if torch.has_mps:
-        summary(model, (3, 32, 32), device=device)
+        summary(model, (batch_size, 3, 32, 32), device=device)
     else:
         summary(model, (3, 32, 32), batch_size=batch_size, device=device)

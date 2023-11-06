@@ -1,5 +1,5 @@
 import argparse
-import model
+import model as m
 import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
@@ -29,7 +29,7 @@ def evaluate(model, data_loader):
     total = 0
     with torch.no_grad():
         for images, labels in data_loader:
-            print(total)
+            # print(total)
             output = model.forward(images)
 
             # calculate top-1 error rate
@@ -54,17 +54,41 @@ def evaluate(model, data_loader):
 if __name__ == "__main__":
     # Get arguments from command line
     parser = argparse.ArgumentParser()
-    parser.add_argument("-classifier")
+    parser.add_argument("-mod")
+    parser.add_argument("-nn")
+    parser.add_argument("-cifar10")
 
     args = vars(parser.parse_args())
-    classifier_pth = args["classifier"]
+
+    nn_pth = args["nn"]
+    mod = False
+    if str(args["mod"]).upper() == "Y":
+        mod = True
+    num_classes = 100
+    if str(args["cifar10"]).upper() == "Y":
+        num_classes = 10
 
     print("Creating model and loading data")
-    encoder = model.encoder
-    model = model.classifier(100, encoder)
-    model.load_state_dict(torch.load(classifier_pth))
+    # encoder = m.encoder_mod
+    # model = model.classifier(10, encoder)
+    # model.load_state_dict(torch.load(nn_pth))
 
-    test_set = getCIFAR_100_Dataset()
+    encoder = None
+    model = None
+    if mod:
+        encoder = m.encoder_mod
+        model = m.classifier(num_classes, encoder, True)
+        model.load_state_dict(torch.load(nn_pth))
+    else:
+        encoder = m.encoder_vanilla
+        model = m.classifier(num_classes, encoder, True)
+        model.load_state_dict(torch.load(nn_pth))
+
+    test_set = None
+    if num_classes == 10:
+        test_set = getCIFAR_10_Dataset()
+    else:
+        test_set = getCIFAR_100_Dataset()
     data_loader = torch.utils.data.DataLoader(test_set, shuffle=False, batch_size=32)
     print("Dataset size: ", len(data_loader))
 
