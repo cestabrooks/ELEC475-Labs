@@ -1,1 +1,1 @@
-python test.py -nn nn_mod.pth
+python test.py -nn nn_mod.pth -mod Y
