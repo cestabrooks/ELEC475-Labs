@@ -23,7 +23,7 @@ class custom_dataset(Dataset):
                 self.image_files.append(dir + file_name)
 
         self.labels = []
-        label_file = open("../data/Kitti8_ROIs/train/labels.txt", "r")
+        label_file = open(dir + "/labels.txt", "r")
         for line in label_file:
             self.labels.append(line.split(" ")[1])
 
@@ -38,15 +38,16 @@ class custom_dataset(Dataset):
         return image_sample, self.labels[index]
 # ---------------------------------------------------------------------
 
-def train(model, optimizer, n_epochs, loss_fn, data_loader, device, plot_file, save_file):
+def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, device, plot_file, save_file):
     print("Starting training...")
-    model.train()
     model.to(device)
-    losses_train = []
+    train_losses = []
+    validation_losses = []
     for epoch in range(1, n_epochs + 1):
         print("Epoch", epoch)
+        model.train()
         loss_train = 0.0
-
+        loss_val = 0.0
         for imgs, labels in data_loader:
             imgs = imgs.to(device=device)
             labels = labels.to(device=device)
@@ -66,8 +67,21 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, device, plot_file, s
             optimizer.step()  # iterate the optimization, based on the loss gradients
             loss_train += loss.item()  # update the value of losses
 
-        print('{} Epoch {}, Training loss {}'.format(datetime.datetime.now(), epoch, loss_train / len(data_loader)))
-        losses_train += [loss_train / len(data_loader)]  # update value of losses
+        # Calculate validation loss
+        model.eval()
+        with torch.no_grad():
+            for img, label in validation_loader:
+                img.to(device=device)
+                label.to(device=device)
+                # forward propagation
+                outputs = model(img)
+                # calculate loss
+                loss = loss_fn(outputs, label)
+                loss_val += loss.item()
+
+        print('{} Epoch {}, Training loss {}, Validation Loss {}'.format(datetime.datetime.now(), epoch, loss_train / len(data_loader), loss_val / len(validation_loader)))
+        train_losses += [loss_train / len(data_loader)]  # update value of losses
+        validation_losses += [loss_val / len(validation_loader)]
 
     # plot the losses_train
     if save_file != None:
@@ -75,7 +89,8 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, device, plot_file, s
     if plot_file != None:
         plt.figure(2, figsize=(12, 7))
         plt.clf()
-        plt.plot(losses_train, label='train')
+        plt.plot(train_losses, label='train')
+        plt.plot(validation_losses, label='validation')
         plt.xlabel('epoch')
         plt.ylabel('loss')
         plt.legend(loc=1)
@@ -115,17 +130,19 @@ if __name__ == "__main__":
 
     train_dataset = custom_dataset("../data/Kitti8_ROIs/train", transform)
     print("Dataset size: ", len(train_dataset))
-
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset,
         batch_size=batch_size,
         shuffle=True
     )
 
+    validation_dataset = custom_dataset("../data/Kitti8_ROIs/test", transform)
+    validation_dataloader = torch.utils.data.DataLoader(
+        dataset=validation_dataset,
+        shuffle=False,
+    )
+
     # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     optimizer_SGD = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.001)
 
     train(model, optimizer_SGD, n_epoch, torch.nn.CrossEntropyLoss(), train_dataloader, device, loss_plot, save_pth)
-
-
-    data_loader = torch
