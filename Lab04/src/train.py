@@ -35,17 +35,17 @@ class custom_dataset(Dataset):
         image = Image.open(self.image_files[index]).convert('RGB')
         image_sample = self.transform(image)
         # print('break 27: ', index, image, image_sample.shape)
-        return image_sample, self.labels[index]
+        return image_sample, int(self.labels[index])
 # ---------------------------------------------------------------------
 
-def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, device, plot_file, save_file):
+def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, device, plot_file, save_file, completed_epochs=0):
     print("Starting training...")
-    model.to(device)
+    model.to(device=device)
     train_losses = []
     validation_losses = []
     train_accuracy = []
     validation_accuracy = []
-    for epoch in range(1, n_epochs + 1):
+    for epoch in range(completed_epochs, n_epochs):
         print("Epoch", epoch)
         model.train()
         loss_train = 0.0
@@ -81,8 +81,8 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
         model.eval()
         with torch.no_grad():
             for imgs, labels in validation_loader:
-                imgs.to(device=device)
-                labels.to(device=device)
+                imgs = imgs.to(device=device)
+                labels = labels.to(device=device)
                 # forward propagation
                 outputs = model(imgs)
                 # calculate loss
@@ -104,6 +104,18 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
 
         train_losses += [loss_train / len(data_loader)]  # update value of losses
         validation_losses += [loss_val / len(validation_loader)]
+
+        # save the model and optimizer
+        path = "./history/model_" + str(epoch) + ".pth"
+        opt_path = "./history/optimizer_" + str(epoch) + ".pth"
+        print("Saving model to: " + path)
+        print("Saving optimizer to: " + opt_path)
+        torch.save(model.state_dict(), path)
+        torch.save(optimizer.state_dict(), opt_path)
+
+        loss_file = open("./history/losses.txt", "a+")
+        loss_file.write(str(train_losses[-1]) + " " + str(validation_losses[-1]) + "\n")
+        loss_file.close()
 
 
     # plot the losses_train
@@ -145,13 +157,22 @@ if __name__ == "__main__":
 
     model = m.efficientnet_b1
 
+    # Loading previous model state
+    completed_epochs = 0
+    if "_" in save_pth:
+        print("Loading model: " + save_pth)
+        # Load the decoder weights
+        model.load_state_dict(torch.load(save_pth))
+        # Subtract from the required number of epochs remaining
+        completed_epochs = int(save_pth.split("_")[1].split('.')[0]) + 1
 
     transform = transforms.Compose([
+        transforms.Resize(size=(150, 150), interpolation=Image.BICUBIC),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
     ])
 
-    train_dataset = custom_dataset("../data/Kitti8_ROIs/train", transform)
+    train_dataset = custom_dataset("../data/Kitti8_ROIs/train/", transform)
     print("Dataset size: ", len(train_dataset))
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -159,13 +180,27 @@ if __name__ == "__main__":
         shuffle=True
     )
 
-    validation_dataset = custom_dataset("../data/Kitti8_ROIs/test", transform)
+    validation_dataset = custom_dataset("../data/Kitti8_ROIs/test/", transform)
     validation_dataloader = torch.utils.data.DataLoader(
         dataset=validation_dataset,
-        shuffle=False,
+        shuffle=False
     )
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    optimizer_SGD = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.001)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.001)
 
-    train(model, optimizer_SGD, n_epoch, torch.nn.CrossEntropyLoss(), train_dataloader, device, loss_plot, save_pth)
+    # Load previous optimizer and ???????????
+    loss_file = None
+    os.makedirs("./history/", exist_ok=True)
+    if "_" in save_pth:
+        print("Loading optimizer...")
+        # Load the optimizer
+        optimizer.load_state_dict(torch.load("./history/optimizer_" + str(completed_epochs - 1) + ".pth"))
+        learning_rate = optimizer.param_groups[0]['lr']
+        print("   Resume learning rate at", optimizer.param_groups[0]['lr'])
+    else:
+        # Open existing for "writing" in order to clear it (since we are not resuming)
+        loss_file = open("./history/losses.txt", "w")
+        loss_file.close()
+
+    train(model, optimizer, n_epoch, torch.nn.CrossEntropyLoss(), train_dataloader, validation_dataloader, device, loss_plot, save_pth, completed_epochs)
