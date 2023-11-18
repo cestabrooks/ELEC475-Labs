@@ -43,11 +43,15 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
     model.to(device)
     train_losses = []
     validation_losses = []
+    train_accuracy = []
+    validation_accuracy = []
     for epoch in range(1, n_epochs + 1):
         print("Epoch", epoch)
         model.train()
         loss_train = 0.0
         loss_val = 0.0
+        acc_train = 0.0
+        acc_val = 0.0
         for imgs, labels in data_loader:
             imgs = imgs.to(device=device)
             labels = labels.to(device=device)
@@ -57,6 +61,9 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
             # calculate loss
             loss = loss_fn(outputs, labels)
             # calculate accuracy
+            predictions = torch.argmax(outputs, dim=1)
+            acc_train += (predictions == labels).sum().item()/len(labels) * 100
+
             # ??????????????????????????????????????????????????????????????????????????
 
             # reset optimizer gradients to zero
@@ -67,21 +74,37 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
             optimizer.step()  # iterate the optimization, based on the loss gradients
             loss_train += loss.item()  # update the value of losses
 
+        acc_train = acc_train/len(data_loader)
+        train_accuracy.append(acc_train)
+
         # Calculate validation loss
         model.eval()
         with torch.no_grad():
-            for img, label in validation_loader:
-                img.to(device=device)
-                label.to(device=device)
+            for imgs, labels in validation_loader:
+                imgs.to(device=device)
+                labels.to(device=device)
                 # forward propagation
-                outputs = model(img)
+                outputs = model(imgs)
                 # calculate loss
-                loss = loss_fn(outputs, label)
+                loss = loss_fn(outputs, labels)
                 loss_val += loss.item()
+                # calculate accuracy
+                predictions = torch.argmax(outputs, dim=1)
+                acc_val += (predictions == labels).sum().item() / len(labels) * 100
 
-        print('{} Epoch {}, Training loss {}, Validation Loss {}'.format(datetime.datetime.now(), epoch, loss_train / len(data_loader), loss_val / len(validation_loader)))
+        acc_val = acc_val/len(validation_loader)
+        validation_accuracy.append(acc_val)
+
+        print('{} Epoch {}, Training loss {}, Validation Loss {}, Training Accuracy {}, Validation Accuracy {}'.format(datetime.datetime.now(),
+                                                                                                                       epoch,
+                                                                                                                       loss_train / len(data_loader),
+                                                                                                                       loss_val / len(validation_loader),
+                                                                                                                       acc_train,
+                                                                                                                       acc_val))
+
         train_losses += [loss_train / len(data_loader)]  # update value of losses
         validation_losses += [loss_val / len(validation_loader)]
+
 
     # plot the losses_train
     if save_file != None:
