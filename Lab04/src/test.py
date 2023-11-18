@@ -7,8 +7,8 @@ import os
 from torch.utils.data import Dataset
 from PIL import Image, ImageFile
 
-class custom_dataset(Dataset):
-    def __init__(self, dir, num_images, transform=None):
+class custom_ROI_testing_dataset(Dataset):
+    def __init__(self, dir, num_images, num_grid_segments, transform=None):
         super().__init__()
         Image.MAX_IMAGE_PIXELS = None
         ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -26,7 +26,9 @@ class custom_dataset(Dataset):
         for index, line in label_file:
             if index == num_images:
                 break
+            # classification
             self.labels.append(line.split(" ")[1])
+            # The rest of the label contains the bounding box
 
     def __len__(self):
         return len(self.image_files)
@@ -60,10 +62,17 @@ if __name__ == "__main__":
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
     ])
-    test_dataset = custom_dataset("../data/Kitti8_ROIs/test", 10, transform)
+
+    # Subdivide a Kitti image into a set of ROIs. Save the bounding box coordinates for each ROI
+    num_grid_segments = 128
+    # CREATE A FUNCTION TO BREAK THE IMAGE INTO SEGMENTS AND THEIR RECORD THEIR BOUNDARY BOXES
+
+
+    test_dataset = custom_ROI_testing_dataset("../data/OUR CUSTOM FOLDER", 10, num_grid_segments, transform)
     test_dataloader = torch.utils.data.DataLoader(
         dataset=test_dataset,
         shuffle=False,
+        batch_size=num_grid_segments
     )
 
     evaluate(model, test_dataloader)
