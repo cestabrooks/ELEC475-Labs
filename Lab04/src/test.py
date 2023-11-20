@@ -2,49 +2,30 @@ import model as m
 import argparse
 import torch
 from torchvision import transforms
-
-import os
+import custom_dataset
 from torch.utils.data import Dataset
-from PIL import Image, ImageFile
-
-class custom_ROI_testing_dataset(Dataset):
-    def __init__(self, dir, num_images, num_grid_segments, transform=None):
-        super().__init__()
-        Image.MAX_IMAGE_PIXELS = None
-        ImageFile.LOAD_TRUNCATED_IMAGES = True
-        self.transform = transform
-
-        self.image_files = []
-        for index, file_name in os.listdir(dir):
-            if index == num_images:
-                break
-            if file_name.endswith(".png"):
-                self.image_files.append(dir + file_name)
-
-        self.labels = []
-        label_file = open(dir + "/labels.txt", "r")
-        for index, line in label_file:
-            if index == num_images:
-                break
-            # classification
-            self.labels.append(line.split(" ")[1])
-            # The rest of the label contains the bounding box
-
-    def __len__(self):
-        return len(self.image_files)
-
-    def __getitem__(self, index):
-        image = Image.open(self.image_files[index]).convert('RGB')
-        image_sample = self.transform(image)
-        # print('break 27: ', index, image, image_sample.shape)
-        return image_sample, self.labels[index]
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 def evaluate(model, test_dataloader):
     print("Evaluating...")
     model.eval()
+    acc_test = 0
+    total = 0
+    y_pred = []
+    y_true = []
     with torch.no_grad():
         for imgs, labels in test_dataloader:
-            output = model(imgs)
+            outputs = model(imgs)
+            # calculate accuracy
+            predictions = torch.argmax(outputs, dim=1)
+            y_pred += torch.Tensor.tolist(predictions)
+            y_true += torch.Tensor.tolist(labels)
+            acc_test += (predictions == labels).sum().item()
+            total += len(labels)
+
+    test_accuracy = acc_test / total * 100
+    print(test_accuracy)
+    ConfusionMatrixDisplay(confusion_matrix(y_true, y_pred))
 
 if __name__ == "__main__":
     # Get arguments from command line
@@ -63,18 +44,11 @@ if __name__ == "__main__":
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
     ])
 
-    # Subdivide a Kitti image into a set of ROIs. Save the bounding box coordinates for each ROI
-    num_grid_segments = 128
-    # CREATE A FUNCTION TO BREAK THE IMAGE INTO SEGMENTS AND THEIR RECORD THEIR BOUNDARY BOXES
-
-
-    test_dataset = custom_ROI_testing_dataset("../data/OUR CUSTOM FOLDER", 10, num_grid_segments, transform)
+    test_dataset = custom_dataset("../data/Kitti8_ROIs/test/", transform)
     test_dataloader = torch.utils.data.DataLoader(
         dataset=test_dataset,
-        shuffle=False,
-        batch_size=num_grid_segments
+        shuffle=False
     )
-
     evaluate(model, test_dataloader)
 
 
