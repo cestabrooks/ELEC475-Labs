@@ -1,0 +1,1 @@
+python step4_test.py -images ../data/kitti8/ -output_dir ../data/Step4 -model_pth model.pth -show_image Y
