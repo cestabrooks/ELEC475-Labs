@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 from PIL import Image, ImageFile
 import json
 
+
 class custom_dataset(Dataset):
     def __init__(self, dir, transform=None):
         super().__init__()
@@ -29,6 +30,7 @@ class custom_dataset(Dataset):
         # print('break 27: ', index, image, image_sample.shape)
         return image_sample, int(self.labels[index])
 
+
 class step4_custom_dataset(Dataset):
     def __init__(self, dir, transform=None):
         super().__init__()
@@ -45,12 +47,12 @@ class step4_custom_dataset(Dataset):
         label_file = open(dir + "/boxes.txt", "r")
         for line in label_file:
             # Always going to be 48 boxes per image
-            self.boxes.append(json.loads(line.split(",")[1]))
+            self.boxes.append(json.loads(line.split("*")[1]))
 
         self.kitti_boxes = []
         label_file = open(dir + "/Kitti_boxes.txt", "r")
         for line in label_file:
-            self.boxes.append(json.loads(line.split(",")[1]))
+            self.kitti_boxes.append(json.loads(line.split("*")[1]))
 
     def __len__(self):
         return len(self.image_files)
@@ -62,3 +64,6 @@ class step4_custom_dataset(Dataset):
 
     def get_kitti_boxes(self, image_idx):
         return self.kitti_boxes[image_idx]
+
+    def get_box(self, index):
+        return self.boxes[index]

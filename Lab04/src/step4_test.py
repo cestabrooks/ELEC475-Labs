@@ -5,6 +5,7 @@
 
 import argparse
 import json
+from PIL import Image
 
 from preproc.KittiDataset import KittiDataset
 from preproc.KittiAnchors import Anchors
@@ -18,6 +19,11 @@ import custom_dataset
 # Maybe doesn't need to be done
 def createImageROIs(dataset, anchors, output_dir):
     print("Creating images...")
+    # Open existing for "writing" in order to clear it (since we are not resuming)
+    file = open("boxes.txt", "w")
+    file.close()
+    file = open("Kitti_boxes.txt", "w")
+    file.close()
     i = 0
     for item in enumerate(dataset):
         image = item[1][0]
@@ -36,12 +42,12 @@ def createImageROIs(dataset, anchors, output_dir):
             for k in range(len(boxes)):
                 filename = str(i) + '_' + str(k) + '.png'
                 f.write(filename)
-                f.write("," + json.dumps(boxes[k]))
+                f.write("*" + json.dumps(boxes[k]))
                 f.write('\n')
         f.close()
         # Append the ground truth boxes
         with open(os.path.join(output_dir, 'Kitti_boxes.txt'), 'a') as f:
-            f.write(str(i) + ',' + json.dumps(car_ROIs) + '\n')
+            f.write(str(i) + '*' + json.dumps(car_ROIs) + '\n')
         f.close()
 
         i += 1
@@ -67,7 +73,7 @@ def calc_IoU(boxA, boxB):
     iou = interArea / float(boxAArea + boxBArea - interArea)
     # return the intersection over union value
     return iou
-def evaluate(model, data_loader, show_image):
+def evaluate(model, data_loader, show_image, test_dataset):
     print("Evaluating...")
     with torch.no_grad():
         index = 0
@@ -76,15 +82,19 @@ def evaluate(model, data_loader, show_image):
         for imgs, boxes in data_loader:
             outputs = model(imgs)
             boxes_with_cars = torch.argmax(outputs, dim=1)
-
+            # print("Boxes", boxes)
             if show_image:
+                # test dataset naming convention starts at 006000
                 image_idx = 6000 + index
                 img_path = "../data/Kitti8/test/image/00" + str(image_idx) + ".png"
                 image = cv2.imread(img_path, cv2.IMREAD_COLOR)
                 for i in range(0, len(boxes_with_cars)):
                     if boxes_with_cars[i] == 1:
-                        box = boxes[i]
-                        cv2.rectangle(image, (box[0][0], box[0][1]), (box[1][0], box[1][1]), (0, 0, 255))
+
+                        box = test_dataset.get_box(index*len(boxes_with_cars) + i)
+                        print("Box", box[0][0], box[0][1], box[1][0], box[1][1])
+                        # Add the rectangle to the image
+                        cv2.rectangle(image, (box[0][1], box[0][0]), (box[1][1], box[1][0]), (0, 0, 255))
 
                 cv2.imshow('image', image)
                 key = cv2.waitKey(0)
@@ -92,12 +102,11 @@ def evaluate(model, data_loader, show_image):
                     break
 
             # Calculate the IoU for all the boxes with cars
-            ground_truth_boxes = data_loader.get_kitti_boxes(index)
+            ground_truth_boxes = test_dataset.get_kitti_boxes(index)
             for i in range(0, len(boxes_with_cars)):
                 if boxes_with_cars[i] == 1:
-                    boxA = boxes[i]
+                    boxA = test_dataset.get_box(index*len(boxes_with_cars) + i)
                     for boxB in ground_truth_boxes:
-                        # simpler calculation to see if the boxes intersect
                         iou = calc_IoU(boxA, boxB)
                         # Only add the iou's to the average for boxes that actually overlap
                         if iou > 0:
@@ -135,17 +144,18 @@ if __name__ == "__main__":
     createImageROIs(dataset, anchors, output_dir)
 
     transform = transforms.Compose([
+        transforms.Resize(size=(150, 150), interpolation=Image.BICUBIC),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
     ])
 
-    test_dataset = custom_dataset.step4_custom_dataset("../data/Kitti8_ROIs/test/", transform)
+    test_dataset = custom_dataset.step4_custom_dataset("../data/Step4/", transform)
     test_dataloader = torch.utils.data.DataLoader(
         dataset=test_dataset,
         shuffle=False,
         batch_size=48
     )
 
-    evaluate(model, test_dataloader, show_image)
+    evaluate(model, test_dataloader, show_image, test_dataset)
 
     print("Done")
