@@ -81,8 +81,8 @@ def evaluate(model, data_loader, show_image):
                 image_idx = 6000 + index
                 img_path = "../data/Kitti8/test/image/00" + str(image_idx) + ".png"
                 image = cv2.imread(img_path, cv2.IMREAD_COLOR)
-                for i in boxes_with_cars:
-                    if boxes[i] == 1:
+                for i in range(0, len(boxes_with_cars)):
+                    if boxes_with_cars[i] == 1:
                         box = boxes[i]
                         cv2.rectangle(image, (box[0][0], box[0][1]), (box[1][0], box[1][1]), (0, 0, 255))
 
@@ -93,8 +93,8 @@ def evaluate(model, data_loader, show_image):
 
             # Calculate the IoU for all the boxes with cars
             ground_truth_boxes = data_loader.get_kitti_boxes(index)
-            for i in boxes_with_cars:
-                if boxes[i] == 1:
+            for i in range(0, len(boxes_with_cars)):
+                if boxes_with_cars[i] == 1:
                     boxA = boxes[i]
                     for boxB in ground_truth_boxes:
                         # simpler calculation to see if the boxes intersect
