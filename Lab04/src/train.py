@@ -36,7 +36,6 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
             predictions = torch.argmax(outputs, dim=1)
             acc_train += (predictions == labels).sum().item()/len(labels) * 100
 
-            # ??????????????????????????????????????????????????????????????????????????
 
             # reset optimizer gradients to zero
             optimizer.zero_grad()
@@ -144,7 +143,7 @@ if __name__ == "__main__":
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
     ])
 
-    train_dataset = custom_dataset("../data/Kitti8_ROIs/train/", transform)
+    train_dataset = custom_dataset.custom_dataset("../data/Kitti8_ROIs/train/", transform)
     print("Dataset size: ", len(train_dataset))
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -152,7 +151,7 @@ if __name__ == "__main__":
         shuffle=True
     )
 
-    validation_dataset = custom_dataset("../data/Kitti8_ROIs/test/", transform)
+    validation_dataset = custom_dataset.custom_dataset("../data/Kitti8_ROIs/test/", transform)
     validation_dataloader = torch.utils.data.DataLoader(
         dataset=validation_dataset,
         shuffle=False
@@ -175,4 +174,6 @@ if __name__ == "__main__":
         loss_file = open("./history/losses.txt", "w")
         loss_file.close()
 
-    train(model, optimizer, n_epoch, torch.nn.CrossEntropyLoss(), train_dataloader, validation_dataloader, device, loss_plot, save_pth, completed_epochs)
+    weights = [0.333, 1.0]
+    weights = torch.tensor(weights).to(device=device)
+    train(model, optimizer, n_epoch, torch.nn.CrossEntropyLoss(weight=weights), train_dataloader, validation_dataloader, device, loss_plot, save_pth, completed_epochs)

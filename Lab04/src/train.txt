@@ -1,1 +1,0 @@
-python train.py -save model.pth -e 10 -b 128 -p loss_plt -cuda Y -mps -N
