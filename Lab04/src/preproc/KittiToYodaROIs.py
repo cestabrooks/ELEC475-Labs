@@ -8,7 +8,7 @@ from KittiDataset import KittiDataset
 from KittiAnchors import Anchors
 
 save_ROIs = True
-max_ROIs = -1 #10
+max_ROIs = -1
 
 def strip_ROIs(class_ID, label_list):
     ROIs = []
@@ -99,6 +99,8 @@ def main():
     anchors = Anchors()
 
     i = 0
+    sum_car = 0
+    sum_no_car = 0
     for item in enumerate(dataset):
         idx = item[0]
         image = item[1][0]
@@ -141,18 +143,27 @@ def main():
 
         # print(ROI_IoUs)
 
-        
+
         for k in range(len(boxes)):
             filename = str(i) + '_' + str(k) + '.png'
-            if save_ROIs == True:
-                cv2.imwrite(os.path.join(output_dir,filename), ROIs[k])
             name_class = 0
             name = 'NoCar'
             if ROI_IoUs[k] >= IoU_threshold:
                 name_class = 1
                 name = 'Car'
-            labels += [[filename, name_class, name]]
 
+            if name == "NoCar" and sum_car > sum_no_car:
+                sum_no_car += 1
+            elif name == "Car":
+                sum_car += 1
+            else:
+                # Don't save the image if it is a NCar class and there are not enough Car classes
+                continue
+
+            if save_ROIs == True:
+                cv2.imwrite(os.path.join(output_dir,filename), ROIs[k])
+
+            labels += [[filename, name_class, name]]
 
         if show_images:
             cv2.imshow('image', image1)
@@ -238,6 +249,9 @@ def main():
 
         if max_ROIs > 0 and i >= max_ROIs:
             break
+
+    print("Car: ", sum_car)
+    print("NoCar:", sum_no_car)
     #
     # print(labels)
     #
