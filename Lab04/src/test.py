@@ -49,7 +49,7 @@ if __name__ == "__main__":
         device = "mps"
 
     model = m.efficientnet_b1
-    model.load_state_dict(torch.load(model_pth))
+    model.load_state_dict(torch.load(model_pth, map_location=torch.device(device)))
 
     transform = transforms.Compose([
         transforms.ToTensor(),
