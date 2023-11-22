@@ -1,14 +1,4 @@
-import model as m
-from torchvision import transforms
-import torch.utils.data
-import matplotlib.pyplot as plt
-import argparse
-import datetime
-import custom_dataset
-import os
-from PIL import Image
-
-
+import Lab05.dsntnn as dsntnn
 
 def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, device, plot_file, save_file, completed_epochs=0):
     print("Starting training...")
@@ -19,20 +9,24 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
     validation_accuracy = []
     for epoch in range(completed_epochs, n_epochs):
         print("Epoch", epoch)
+
         model.train()
         loss_train = 0.0
         loss_val = 0.0
         acc_train = 0.0
         acc_val = 0.0
-        for imgs, labels in data_loader:
+        for imgs, target_coords in data_loader:
             imgs = imgs.to(device=device)
-            labels = labels.to(device=device)
+            coords = coords.to(device=device)
 
             # forward propagation
-            outputs = model(imgs)
-            # calculate loss
-            labels_one_hot = torch.nn.functional.one_hot(labels, num_classes=2)
-            loss = loss_fn(outputs, labels_one_hot.float())
+            coords, heatmaps = model(imgs)
+
+            # calculate losses
+            euclidean_loss = dsntnn.euclidean_losses(coords, target_coords)
+            # the
+            reg_loss = dsntnn.js_reg_losses(heatmaps, target_coords, sigma_t=1.0)
+
             # calculate accuracy
             predictions = torch.argmax(outputs, dim=1)
             acc_train += (predictions == labels).sum().item()/len(labels) * 100
@@ -103,80 +97,3 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
         plt.ylabel('loss')
         plt.legend(loc=1)
         plt.savefig(plot_file)
-
-
-if __name__ == "__main__":
-    # Get arguments from command line
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-save")
-    parser.add_argument("-e")
-    parser.add_argument("-b")
-    parser.add_argument("-p")
-    parser.add_argument("-cuda")
-    parser.add_argument("-mps")
-
-    args = vars(parser.parse_args())
-
-    save_pth = args["save"]
-    n_epoch = int(args["e"])
-    batch_size = int(args["b"])
-    loss_plot = args["p"]
-    device = "cpu"
-    if str(args["cuda"]).upper() == "Y":
-        device = "cuda"
-    elif str(args["mps"]).upper() == "Y":
-        device = "mps"
-
-
-    model = m.efficientnet_b1
-
-    # Loading previous model state
-    completed_epochs = 0
-    if "_" in save_pth:
-        print("Loading model: " + save_pth)
-        # Load the decoder weights
-        model.load_state_dict(torch.load(save_pth))
-        # Subtract from the required number of epochs remaining
-        completed_epochs = int(save_pth.split("_")[1].split('.')[0]) + 1
-
-    transform = transforms.Compose([
-        transforms.Resize(size=(150, 150), interpolation=Image.BICUBIC),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
-    ])
-
-    train_dataset = custom_dataset.custom_dataset("../data/Kitti8_ROIs/train/", transform)
-    print("Dataset size: ", len(train_dataset))
-    train_dataloader = torch.utils.data.DataLoader(
-        dataset=train_dataset,
-        batch_size=batch_size,
-        shuffle=True
-    )
-
-    validation_dataset = custom_dataset.custom_dataset("../data/Kitti8_ROIs/test/", transform)
-    validation_dataloader = torch.utils.data.DataLoader(
-        dataset=validation_dataset,
-        batch_size=batch_size,
-        shuffle=False
-    )
-
-    # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.001)
-
-    # Load previous optimizer and ???????????
-    loss_file = None
-    os.makedirs("./history/", exist_ok=True)
-    if "_" in save_pth:
-        print("Loading optimizer...")
-        # Load the optimizer
-        optimizer.load_state_dict(torch.load("./history/optimizer_" + str(completed_epochs - 1) + ".pth"))
-        learning_rate = optimizer.param_groups[0]['lr']
-        print("   Resume learning rate at", optimizer.param_groups[0]['lr'])
-    else:
-        # Open existing for "writing" in order to clear it (since we are not resuming)
-        loss_file = open("./history/losses.txt", "w")
-        loss_file.close()
-
-    weights = [1, 10]
-    weights = torch.tensor(weights).to(device=device)
-    train(model, optimizer, n_epoch, torch.nn.BCEWithLogitsLoss(weight=weights), train_dataloader, validation_dataloader, device, loss_plot, save_pth, completed_epochs)
