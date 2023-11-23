@@ -22,22 +22,28 @@ def train(model, optimizer, n_epochs, loss_fn, data_loader, validation_loader, d
             # forward propagation
             coords, heatmaps = model(imgs)
 
-            # calculate losses
+            # --- calculate losses ---
             euclidean_loss = dsntnn.euclidean_losses(coords, target_coords)
-            # the
+            # calculates divergence between heatmaps and spheretical Gaussians with std=sigma_t and mean=target_coords
             reg_loss = dsntnn.js_reg_losses(heatmaps, target_coords, sigma_t=1.0)
+            # takes the mean of the losses across all locations (in our case, we only have one location, so not huge deal)
+            loss = dsntnn.average_loss(euclidean_loss + reg_loss)
+            # ------------------------
 
             # calculate accuracy
-            predictions = torch.argmax(outputs, dim=1)
-            acc_train += (predictions == labels).sum().item()/len(labels) * 100
+            # NEED TO SEE DATASET???????????????
+            # predictions = torch.argmax(outputs, dim=1)
+            # acc_train += (predictions == labels).sum().item()/len(labels) * 100
 
 
             # reset optimizer gradients to zero
             optimizer.zero_grad()
             # calculate the loss gradients
             loss.backward()
-            # iterate the optimization, based on the loss gradients
-            optimizer.step()  # iterate the optimization, based on the loss gradients
+
+            # iterate the optimizer based on the loss gradients and update the model parameters
+            optimizer.step()
+
             loss_train += loss.item()  # update the value of losses
 
         acc_train = acc_train/len(data_loader)
