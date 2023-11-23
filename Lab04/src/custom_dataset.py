@@ -4,31 +4,37 @@ from PIL import Image, ImageFile
 import json
 
 
+
 class custom_dataset(Dataset):
     def __init__(self, dir, transform=None):
         super().__init__()
         Image.MAX_IMAGE_PIXELS = None
         ImageFile.LOAD_TRUNCATED_IMAGES = True
         self.transform = transform
-
-        self.image_files = []
-        for file_name in os.listdir(dir):
-            if file_name.endswith(".png"):
-                self.image_files.append(dir + file_name)
-
-        self.labels = []
-        label_file = open(dir + "/labels.txt", "r")
+        self.labels = {}
+        self.key_list = []
+        self.dir = dir
+        label_file = open(self.dir + "/labels.txt", "r")
         for line in label_file:
-            self.labels.append(line.split(" ")[1])
+            split = line.split(" ")
+            image_name, label = split[0], split[1]
+            self.labels[image_name] = int(label)
+            self.key_list.append(image_name)
 
     def __len__(self):
-        return len(self.image_files)
+        return len(self.key_list)
 
     def __getitem__(self, index):
-        image = Image.open(self.image_files[index]).convert('RGB')
-        image_sample = self.transform(image)
-        # print('break 27: ', index, image, image_sample.shape)
-        return image_sample, int(self.labels[index])
+        # Get the image name
+        image_name = self.key_list[index]
+        # Open the image and transform it to a tensor
+        image = Image.open(self.dir + "/" + image_name).convert('RGB')
+        image_tensor = self.transform(image)
+
+        print(image_name)
+        print(self.labels[image_name])
+        # Return the image tensor and nose coordinates
+        return image_tensor, self.labels[image_name]
 
 
 class step4_custom_dataset(Dataset):

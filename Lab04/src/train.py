@@ -129,6 +129,7 @@ if __name__ == "__main__":
 
 
     model = m.efficientnet_b1
+    model.to(device=device) # Model needs to be on correct device before we pass in its parameters to the optimizer.
 
     # Loading previous model state
     completed_epochs = 0
@@ -145,7 +146,7 @@ if __name__ == "__main__":
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
     ])
 
-    train_dataset = custom_dataset.custom_dataset("../data/Kitti8_ROIs/train/", transform)
+    train_dataset = custom_dataset.custom_dataset("../data/Balanced_Kitti8_ROIs/train/", transform)
     print("Dataset size: ", len(train_dataset))
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -169,7 +170,7 @@ if __name__ == "__main__":
     if "_" in save_pth:
         print("Loading optimizer...")
         # Load the optimizer
-        optimizer.load_state_dict(torch.load("./history/optimizer_" + str(completed_epochs - 1) + ".pth"))
+        optimizer.load_state_dict(torch.load("./history/optimizer_" + str(completed_epochs - 1) + ".pth", map_location=device))
         learning_rate = optimizer.param_groups[0]['lr']
         print("   Resume learning rate at", optimizer.param_groups[0]['lr'])
     else:
@@ -177,6 +178,4 @@ if __name__ == "__main__":
         loss_file = open("./history/losses.txt", "w")
         loss_file.close()
 
-    weights = [1, 10]
-    weights = torch.tensor(weights).to(device=device)
-    train(model, optimizer, n_epoch, torch.nn.BCEWithLogitsLoss(weight=weights), train_dataloader, validation_dataloader, device, loss_plot, save_pth, completed_epochs)
+    train(model, optimizer, n_epoch, torch.nn.BCEWithLogitsLoss(), train_dataloader, validation_dataloader, device, loss_plot, save_pth, completed_epochs)
