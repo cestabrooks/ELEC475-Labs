@@ -1,10 +1,10 @@
 from torch import nn
-import Lab05.dsntnn as dsntnn
+import dsntnn
 
 def flat_softmax(inp):
     """Compute the softmax with all but the first two tensor dimensions combined."""
     orig_size = inp.size()
-    flat = inp.view(-1, reduce(mul, orig_size[2:]))
+    flat = inp.view(-1, dsntnn.reduce(dsntnn.mul, orig_size[2:]))
     flat = nn.functional.softmax(flat, -1)
     return flat.view(*orig_size)
 
@@ -25,7 +25,7 @@ class CoordinateRegression(nn.Module):
         self.heatmap_conv = nn.Conv2d(16, n_coordinates, kernel_size=1, bias=False)
 
     def forward(self, imgs):
-        imgs = self.layers(imgs)
+        imgs = self.backend_layers(imgs)
 
         # Use a 1x1 conv to get one unnormalized heatmap per location
         imgs = self.heatmap_conv(imgs)

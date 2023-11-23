@@ -1,32 +1,41 @@
 import os
 from torch.utils.data import Dataset
 from PIL import Image, ImageFile
-import json
+import re
+import torch
 
-
-class custom_dataset(Dataset):
-    def __init__(self, dir, transform=None):
+class CustomDataset(Dataset):
+    def __init__(self, dir, transform=None, start_index=0, end_index=6000):
         super().__init__()
         Image.MAX_IMAGE_PIXELS = None
         ImageFile.LOAD_TRUNCATED_IMAGES = True
+        self.start_index = start_index
+        self.end_index = end_index
         self.transform = transform
-
-        self.image_files = []
-        for file_name in os.listdir(dir):
-            if file_name.endswith(".png"):
-                self.image_files.append(dir + file_name)
-
-        self.labels = []
-        label_file = open(dir + "/labels.txt", "r")
+        self.coordinates = {}
+        self.key_list = []
+        self.dir = dir
+        label_file = open(self.dir + "/train_noses.2.txt", "r")
         for line in label_file:
-            self.labels.append(line.split(" ")[1])
+            split = line.split(",")
+            image_name, coord_x, coord_y = split[0], split[1], split[2]
+            x = int(re.search(r'\d+', coord_x).group())
+            y = int(re.search(r'\d+', coord_y).group())
+            self.coordinates[image_name] = (x, y)
+            self.key_list.append(image_name)
 
+        if self.end_index == -1:
+            self.end_index = len(self.key_list)
     def __len__(self):
-        return len(self.image_files)
+        return self.end_index - self.start_index
 
     def __getitem__(self, index):
-        image = Image.open(self.image_files[index]).convert('RGB')
-        image_sample = self.transform(image)
-        # print('break 27: ', index, image, image_sample.shape)
-        return image_sample, int(self.labels[index])
+        index = index + self.start_index
+        # Get the image name
+        image_name = self.key_list[index]
+        # Open the image and transform it to a tensor
+        image = Image.open(self.dir + "/images/" + image_name).convert('RGB')
+        image_tensor = self.transform(image)
+        # Return the image tensor and nose coordinates
+        return image_tensor, torch.tensor(self.coordinates[image_name])
 
