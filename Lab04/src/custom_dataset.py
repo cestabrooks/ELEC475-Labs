@@ -31,8 +31,6 @@ class custom_dataset(Dataset):
         image = Image.open(self.dir + "/" + image_name).convert('RGB')
         image_tensor = self.transform(image)
 
-        print(image_name)
-        print(self.labels[image_name])
         # Return the image tensor and nose coordinates
         return image_tensor, self.labels[image_name]
 
