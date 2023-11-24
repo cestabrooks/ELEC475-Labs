@@ -15,7 +15,7 @@ class CustomDataset(Dataset):
         self.coordinates = {}
         self.key_list = []
         self.dir = dir
-        label_file = open(self.dir + "/train_noses.2.txt", "r")
+        label_file = open(self.dir + "/train_noses.3.txt", "r")
         for line in label_file:
             split = line.split(",")
             image_name, coord_x, coord_y = split[0], split[1], split[2]
@@ -37,5 +37,5 @@ class CustomDataset(Dataset):
         image = Image.open(self.dir + "/images/" + image_name).convert('RGB')
         image_tensor = self.transform(image)
         # Return the image tensor and nose coordinates
-        return image_tensor, torch.tensor(self.coordinates[image_name])
+        return image_tensor, torch.tensor(self.coordinates[image_name]), image.width, image.height
 

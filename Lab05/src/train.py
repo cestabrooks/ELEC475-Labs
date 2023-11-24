@@ -7,6 +7,22 @@ import model as m
 from torchvision import transforms
 from custom_dataset import CustomDataset
 from PIL import Image
+import math
+
+
+def calculate_avg_distances(preds, targets, img_widths, img_heights):
+    pred_x, pred_y = convert_to_image_location(preds[:, 0, 0], preds[:, 0, 1], img_widths, img_heights)
+    target_x, target_y = convert_to_image_location(targets[:, 0, 0], targets[:, 0, 1], img_widths, img_heights)
+    distances = torch.sqrt(torch.pow(pred_x - target_x, 2) + torch.pow(pred_y - target_y, 2))
+    #print(distances)
+    return torch.sum(distances)/len(img_heights)
+
+
+def convert_to_image_location(x, y, width, height):
+    x = (x + 1) / 2 * width
+    y = (y + 1) / 2 * height
+    return x, y
+
 
 def train(model, optimizer, n_epochs, data_loader, validation_loader, device, plot_file, save_file):
     print("Starting training...")
@@ -21,16 +37,22 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
         model.train()
         loss_train = 0.0
         loss_val = 0.0
-        acc_train = 0.0
-        acc_val = 0.0
-        for imgs, target_coords in data_loader:
+        avg_distance_train = 0.0
+        avg_distance_val = 0.0
+        for imgs, target_coords, width, height in data_loader:
             imgs = imgs.to(device=device)
             target_coords = target_coords.to(device=device)
+            target_coords = target_coords.to(dtype=torch.float32)
+            width = width.to(device=device)
+            height = height.to(device=device)
             # Reshape the target coords to expected shape of output (add extra dimension for number of coordinate positions)
             target_coords = torch.reshape(target_coords, (len(imgs), 1, 2))
+            # normalize targets so top-left is (-1, -1) and bottom right is (1, 1)
+            target_coords[:, 0, 0] = (2 * target_coords[:, 0, 0]) / width - 1
+            target_coords[:, 0, 1] = (2 * target_coords[:, 0, 1]) / height - 1
+
             # forward propagation
             coords, heatmaps = model(imgs)
-
             # --- calculate losses ---
             euclidean_loss = dsntnn.euclidean_losses(coords, target_coords)
             # calculates divergence between heatmaps and spheretical Gaussians with std=sigma_t and mean=target_coords
@@ -38,6 +60,10 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
             # takes the mean of the losses across all locations (in our case, we only have one location, so not huge deal)
             loss = dsntnn.average_loss(euclidean_loss + reg_loss)
             # ------------------------
+
+            #print(calculate_avg_distances(coords, target_coords, width, height))
+            avg_distance = calculate_avg_distances(coords, target_coords, width, height)
+            avg_distance_train += avg_distance.item()
 
             # reset optimizer gradients to zero
             optimizer.zero_grad()
@@ -49,14 +75,23 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
 
             loss_train += loss.item()  # update the value of losses
 
+        avg_distance_train = avg_distance_train/len(data_loader)
+        print("Train avg distance:", avg_distance_train)
+
         # Calculate validation loss
         model.eval()
         with torch.no_grad():
-            for imgs, target_coords in validation_loader:
+            for imgs, target_coords, width, height in validation_loader:
                 imgs = imgs.to(device=device)
                 target_coords = target_coords.to(device=device)
+                target_coords = target_coords.to(dtype=torch.float32)
+                width = width.to(device=device)
+                height = height.to(device=device)
                 # Reshape the target coords to expected shape of output (add extra dimension for number of coordinate positions)
                 target_coords = torch.reshape(target_coords, (len(imgs), 1, 2))
+                # normalize targets so top-left is (-1, -1) and bottom right is (1, 1)
+                target_coords[:, 0, 0] = (2 * target_coords[:, 0, 0]) / width - 1
+                target_coords[:, 0, 1] = (2 * target_coords[:, 0, 1]) / height - 1
                 # forward propagation
                 coords, heatmaps = model(imgs)
                 # --- calculate losses ---
@@ -67,26 +102,20 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
                 loss = dsntnn.average_loss(euclidean_loss + reg_loss)
                 # ------------------------
 
+                avg_distance = calculate_avg_distances(coords, target_coords, width, height)
+                avg_distance_val += avg_distance.item()
+
                 loss_val += loss.item()  # update the value of losses
 
+        avg_distance_val = avg_distance_val/len(validation_loader)
+        print("validation avg distance:", avg_distance_val)
+
         print('{} Epoch {}, Training loss {}, Validation Loss {}'.format(datetime.datetime.now(),
-                epoch, loss_train / len(data_loader), loss_val / len(validation_loader)))
+                                                                         epoch, loss_train / len(data_loader),
+                                                                         loss_val / len(validation_loader)))
 
         train_losses += [loss_train / len(data_loader)]  # update value of losses
         validation_losses += [loss_val / len(validation_loader)]
-
-        # # save the model and optimizer
-        # path = "./history/model_" + str(epoch) + ".pth"
-        # opt_path = "./history/optimizer_" + str(epoch) + ".pth"
-        # print("Saving model to: " + path)
-        # print("Saving optimizer to: " + opt_path)
-        # torch.save(model.state_dict(), path)
-        # torch.save(optimizer.state_dict(), opt_path)
-        #
-        # loss_file = open("./history/losses.txt", "a+")
-        # loss_file.write(str(train_losses[-1]) + " " + str(validation_losses[-1]) + "\n")
-        # loss_file.close()
-
 
     # plot the losses_train
     if save_file != None:
@@ -100,6 +129,7 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
         plt.ylabel('loss')
         plt.legend(loc=1)
         plt.savefig(plot_file)
+
 
 if __name__ == "__main__":
     # Get arguments from command line
@@ -128,7 +158,7 @@ if __name__ == "__main__":
     transform = transforms.Compose([
         transforms.Resize(size=(256, 256), interpolation=Image.BICUBIC),
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), )
     ])
 
     train_dataset = CustomDataset("../data", transform, 0, 4800)
