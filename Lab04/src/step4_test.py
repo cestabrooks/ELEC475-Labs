@@ -90,9 +90,7 @@ def evaluate(model, data_loader, show_image, test_dataset):
                 image = cv2.imread(img_path, cv2.IMREAD_COLOR)
                 for i in range(0, len(boxes_with_cars)):
                     if boxes_with_cars[i] == 1:
-
                         box = test_dataset.get_box(index*len(boxes_with_cars) + i)
-                        print("Box", box[0][0], box[0][1], box[1][0], box[1][1])
                         # Add the rectangle to the image
                         cv2.rectangle(image, (box[0][1], box[0][0]), (box[1][1], box[1][0]), (0, 0, 255))
 
@@ -135,13 +133,13 @@ if __name__ == "__main__":
         show_image = True
 
     model = m.efficientnet_b1
-    model.load_state_dict(torch.load(model_pth))
+    model.load_state_dict(torch.load(model_pth, map_location=torch.device('cpu')))
 
     os.makedirs(output_dir, exist_ok=True)
 
     dataset = KittiDataset(input_dir, training=False)
     anchors = Anchors()
-    createImageROIs(dataset, anchors, output_dir)
+    # createImageROIs(dataset, anchors, output_dir)
 
     transform = transforms.Compose([
         transforms.Resize(size=(150, 150), interpolation=Image.BICUBIC),

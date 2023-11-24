@@ -43,15 +43,12 @@ class step4_custom_dataset(Dataset):
         self.transform = transform
 
         self.image_files = []
-        for file_name in os.listdir(dir):
-            if file_name.endswith(".png"):
-                self.image_files.append(dir + file_name)
-
         self.boxes = []
         label_file = open(dir + "/boxes.txt", "r")
         for line in label_file:
             # Always going to be 48 boxes per image
             self.boxes.append(json.loads(line.split("*")[1]))
+            self.image_files.append(dir + line.split("*")[0])
 
         self.kitti_boxes = []
         label_file = open(dir + "/Kitti_boxes.txt", "r")
