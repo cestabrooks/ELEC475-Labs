@@ -23,6 +23,19 @@ import torch
 import torch.nn.functional
 
 
+# Functions Connor Added
+def calculate_avg_distances(preds, targets, img_widths, img_heights):
+    pred_x, pred_y = convert_to_image_location(preds[:, 0, 0], preds[:, 0, 1], img_widths, img_heights)
+    target_x, target_y = convert_to_image_location(targets[:, 0, 0], targets[:, 0, 1], img_widths, img_heights)
+    distances = torch.sqrt(torch.pow(pred_x - target_x, 2) + torch.pow(pred_y - target_y, 2))
+    #print(distances)
+    return torch.sum(distances)/len(img_heights)
+def convert_to_image_location(x, y, width, height):
+    x = (x + 1) / 2 * width
+    y = (y + 1) / 2 * height
+    return x, y
+
+
 def linear_expectation(probs, values):
     assert(len(values) == probs.ndimension() - 2)
     expectation = []
