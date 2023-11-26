@@ -1,0 +1,1 @@
+python test.py -model_pth model.pth -display N -cuda Y -mps N

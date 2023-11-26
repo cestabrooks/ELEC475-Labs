@@ -7,22 +7,6 @@ import model as m
 from torchvision import transforms
 from custom_dataset import CustomDataset
 from PIL import Image
-import math
-
-
-def calculate_avg_distances(preds, targets, img_widths, img_heights):
-    pred_x, pred_y = convert_to_image_location(preds[:, 0, 0], preds[:, 0, 1], img_widths, img_heights)
-    target_x, target_y = convert_to_image_location(targets[:, 0, 0], targets[:, 0, 1], img_widths, img_heights)
-    distances = torch.sqrt(torch.pow(pred_x - target_x, 2) + torch.pow(pred_y - target_y, 2))
-    #print(distances)
-    return torch.sum(distances)/len(img_heights)
-
-
-def convert_to_image_location(x, y, width, height):
-    x = (x + 1) / 2 * width
-    y = (y + 1) / 2 * height
-    return x, y
-
 
 def train(model, optimizer, n_epochs, data_loader, validation_loader, device, plot_file, save_file):
     print("Starting training...")
@@ -62,7 +46,7 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
             # ------------------------
 
             #print(calculate_avg_distances(coords, target_coords, width, height))
-            avg_distance = calculate_avg_distances(coords, target_coords, width, height)
+            avg_distance = dsntnn.calculate_avg_distances(coords, target_coords, width, height)
             avg_distance_train += avg_distance.item()
 
             # reset optimizer gradients to zero
@@ -102,7 +86,7 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
                 loss = dsntnn.average_loss(euclidean_loss + reg_loss)
                 # ------------------------
 
-                avg_distance = calculate_avg_distances(coords, target_coords, width, height)
+                avg_distance = dsntnn.calculate_avg_distances(coords, target_coords, width, height)
                 avg_distance_val += avg_distance.item()
 
                 loss_val += loss.item()  # update the value of losses
