@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
     dataset = KittiDataset(input_dir, training=False)
     anchors = Anchors()
-    # createImageROIs(dataset, anchors, output_dir)
+    createImageROIs(dataset, anchors, output_dir)
 
     transform = transforms.Compose([
         transforms.Resize(size=(150, 150), interpolation=Image.BICUBIC),

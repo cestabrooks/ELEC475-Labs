@@ -1,1 +1,1 @@
-python test.py -model_pth model.pth -mps Y
+python test.py -model_pth model_14.pth -mps N -cuda Y
