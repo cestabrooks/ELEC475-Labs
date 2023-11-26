@@ -30,7 +30,6 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
     model.to(device=device)
     model.eval()
     avg_distance_test = 0.0
-
     with torch.no_grad():
         for imgs, target_coords, width, height, image_name in test_dataloader:
             imgs = imgs.to(device=device)
@@ -55,7 +54,7 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
                 pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
                 show_predicted_location(pred_x, pred_y, image_name)
 
-    print("Avg distance error:", avg_distance_test)
+    print("Avg distance error:", avg_distance_test/len(test_dataloader))
 
 if __name__ == "__main__":
     # Get arguments from command line
@@ -75,7 +74,7 @@ if __name__ == "__main__":
         device = "mps"
 
     show_images = False
-    if str(args["display"].upper() == "Y"):
+    if str(args["display"]).upper() == "Y":
         show_images = True
 
     model = m.CoordinateRegression()
