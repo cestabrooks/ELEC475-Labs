@@ -146,7 +146,7 @@ if __name__ == "__main__":
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5),)
     ])
 
-    train_dataset = custom_dataset.custom_dataset("../data/Balanced_Kitti8_ROIs/train/", transform)
+    train_dataset = custom_dataset.custom_dataset("../data/Kitti8_ROIs/train/", transform)
     print("Dataset size: ", len(train_dataset))
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset,
