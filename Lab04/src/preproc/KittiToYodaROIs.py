@@ -59,6 +59,7 @@ def main():
     argParser.add_argument('-d', metavar='display', type=str, help='[y/N]')
     argParser.add_argument('-m', metavar='mode', type=str, help='[train/test]')
     argParser.add_argument('-cuda', metavar='cuda', type=str, help='[y/N]')
+    argParser.add_argument('-balanced', metavar='balanced_dataset', type=str, help='[y/N]')
 
     args = argParser.parse_args()
 
@@ -87,6 +88,11 @@ def main():
     if args.cuda != None:
         if args.cuda == 'y' or args.cuda == 'Y':
             use_cuda = True
+
+    create_balanced_dataset = False
+    if args.balanced != None:
+        if args.balanced == 'y' or args.balanced == 'Y':
+            create_balanced_dataset = True
 
     labels = []
 
@@ -152,13 +158,14 @@ def main():
                 name_class = 1
                 name = 'Car'
 
-            if name == "NoCar" and sum_car > sum_no_car:
-                sum_no_car += 1
-            elif name == "Car":
-                sum_car += 1
-            else:
-                # Don't save the image if it is a NCar class and there are not enough Car classes
-                continue
+            if create_balanced_dataset:
+                if name == "nocar" and sum_car > sum_no_car:
+                    sum_no_car += 1
+                elif name == "car":
+                    sum_car += 1
+                else:
+                    # don't save the image if it is a ncar class and there are not enough car classes
+                    continue
 
             if save_ROIs == True:
                 cv2.imwrite(os.path.join(output_dir,filename), ROIs[k])
@@ -250,8 +257,9 @@ def main():
         if max_ROIs > 0 and i >= max_ROIs:
             break
 
-    print("Car: ", sum_car)
-    print("NoCar:", sum_no_car)
+    if create_balanced_dataset:
+        print("Car: ", sum_car)
+        print("NoCar:", sum_no_car)
     #
     # print(labels)
     #
