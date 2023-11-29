@@ -30,7 +30,6 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
     print("Evaluating...")
     model.to(device=device)
     model.eval()
-    avg_distance_test = 0.0
     distances = np.empty(len(test_dataloader), dtype=int)
     count = 0
     max_d = 0
@@ -57,7 +56,6 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
             # Append each distance to a list
             tensor_of_distances = dsntnn.get_list_of_distances(coords, target_coords, width, height)
             distances[count] = tensor_of_distances.item()
-            count += 1
 
             if distances[count] < min_d:
                 min_d = distances[count]
@@ -70,6 +68,7 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
                 max_image["name"] = image_name
                 max_image["coord"] = pred_x, pred_y
 
+            count += 1
             # Print the image and the predicted nose location
             if show_images:
                 pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
@@ -77,17 +76,28 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
 
 
     mean_d = np.mean(distances)
+    std_d = np.std(distances)
     median_d = np.median(distances)
 
     # Target: 5 px eud on average. std=10.
 
-    acc_3px = np.count_nonzero(distances <= 3)/len(distances)
-    acc_5px = np.count_nonzero(distances <= 5 and distances > 3)/len(distances)
-    acc_10px = np.count_nonzero(distances <= 10 and distances > 5)/len(distances)
-    acc_15px = np.count_nonzero(distances <= 15 and distances > 10)/len(distances)
-    acc_20px = np.count_nonzero(distances <= 20 and distances > 15)/len(distances)
+    acc_3px = 100 * np.count_nonzero(distances <= 3)/len(distances)
+    acc_5px = 100 * (np.count_nonzero(distances <= 5)/len(distances)) - acc_3px
+    acc_10px = 100 * (np.count_nonzero(distances <= 10)/len(distances)) - (acc_5px + acc_3px)
+    acc_15px = 100 * (np.count_nonzero(distances <= 15)/len(distances)) - (acc_10px + acc_5px + acc_3px)
+    acc_20px = 100 * (np.count_nonzero(distances <= 20)/len(distances)) - (acc_15px + acc_10px + acc_5px + acc_3px)
+    acc_gt20px = 100 - (acc_20px + acc_15px + acc_10px + acc_5px + acc_3px)
 
-    print("Avg distance error:", avg_distance_test/len(test_dataloader))
+    print("\nmean:", mean_d)
+    print("standard deviation:", std_d)
+    print("median:", median_d)
+
+    print("\nacc_3px:", acc_3px)
+    print("acc_5px:", acc_5px)
+    print("acc_10px:", acc_10px)
+    print("acc_15px:", acc_15px)
+    print("acc_20px:", acc_20px)
+    print("Precent not within 20px:", acc_gt20px)
 
     print("Displaying the best image with a distance of:", min_d)
     x, y = min_image["coord"]
@@ -130,7 +140,7 @@ if __name__ == "__main__":
 
     test_dataloader = torch.utils.data.DataLoader(
         dataset=test_dataset,
-        batch_size=1,
+        batch_size=1, #MUST KEEP BATCH SISE AT 1
         shuffle=False
     )
 
