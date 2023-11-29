@@ -3,7 +3,7 @@ import argparse
 from PIL import Image
 from torchvision import transforms
 import dsntnn
-import model as m
+import model2 as m
 import torch
 from custom_dataset import TestingDataset
 import cv2
@@ -74,23 +74,26 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
                 pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
                 show_predicted_location(pred_x, pred_y, image_name)
 
+    # Target: 5 px eud on average. std=10.
 
     mean_d = np.mean(distances)
     std_d = np.std(distances)
     median_d = np.median(distances)
 
-    # Target: 5 px eud on average. std=10.
+    percent_perfect = 100 * np.count_nonzero(distances == 0)/len(distances)
 
     acc_3px = 100 * np.count_nonzero(distances <= 3)/len(distances)
-    acc_5px = 100 * (np.count_nonzero(distances <= 5)/len(distances)) - acc_3px
-    acc_10px = 100 * (np.count_nonzero(distances <= 10)/len(distances)) - (acc_5px + acc_3px)
-    acc_15px = 100 * (np.count_nonzero(distances <= 15)/len(distances)) - (acc_10px + acc_5px + acc_3px)
-    acc_20px = 100 * (np.count_nonzero(distances <= 20)/len(distances)) - (acc_15px + acc_10px + acc_5px + acc_3px)
-    acc_gt20px = 100 - (acc_20px + acc_15px + acc_10px + acc_5px + acc_3px)
+    acc_5px = 100 * (np.count_nonzero(distances <= 5)/len(distances))
+    acc_10px = 100 * (np.count_nonzero(distances <= 10)/len(distances))
+    acc_15px = 100 * (np.count_nonzero(distances <= 15)/len(distances))
+    acc_20px = 100 * (np.count_nonzero(distances <= 20)/len(distances))
+    acc_gt20px = 100 - acc_20px
 
     print("\nmean:", mean_d)
     print("standard deviation:", std_d)
     print("median:", median_d)
+
+    print("\npercent that are perfect:", percent_perfect)
 
     print("\nacc_3px:", acc_3px)
     print("acc_5px:", acc_5px)
@@ -99,7 +102,7 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
     print("acc_20px:", acc_20px)
     print("Precent not within 20px:", acc_gt20px)
 
-    print("Displaying the best image with a distance of:", min_d)
+    print("\nDisplaying the best image with a distance of:", min_d)
     x, y = min_image["coord"]
     show_predicted_location(x, y, min_image["name"])
     print("Displaying the worst image with a distance of:", max_d)
@@ -127,7 +130,7 @@ if __name__ == "__main__":
     if str(args["display"]).upper() == "Y":
         show_images = True
 
-    model = m.CoordinateRegression()
+    model = m.CoordinateRegression_b1()
     model.load_state_dict(torch.load(model_pth, map_location=torch.device(device)))
 
     transform = transforms.Compose([

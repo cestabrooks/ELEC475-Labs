@@ -1,1 +1,1 @@
-python test.py -model_pth model.pth -display N -cuda Y -mps N
+python test.py -model_pth model_baseline_50.pth -display Y -cuda Y -mps N

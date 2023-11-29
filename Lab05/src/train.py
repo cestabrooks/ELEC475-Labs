@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 import argparse
 import datetime
-import model as m
+import model2 as m
 from torchvision import transforms
 from custom_dataset import CustomDataset
 from PIL import Image
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     elif str(args["mps"]).upper() == "Y":
         device = "mps"
 
-    model = m.CoordinateRegression()
+    model = m.CoordinateRegression_b1()
 
     transform = transforms.Compose([
         transforms.Resize(size=(256, 256), interpolation=Image.BICUBIC),
