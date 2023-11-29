@@ -8,6 +8,7 @@ import torch
 from custom_dataset import TestingDataset
 import cv2
 import os
+import numpy as np
 
 scale = 1
 def show_predicted_location(x, y, image_name):
@@ -30,7 +31,14 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
     model.to(device=device)
     model.eval()
     avg_distance_test = 0.0
-    with torch.no_grad():
+    distances = np.empty(len(test_dataloader), dtype=int)
+    count = 0
+    max_d = 0
+    min_d = 1000
+    max_image = {} # Will contain image name and pred coordinates
+    min_image = {} # Will contain image name and pred coordinates
+
+    with ((torch.no_grad())):
         for imgs, target_coords, width, height, image_name in test_dataloader:
             imgs = imgs.to(device=device)
             target_coords = target_coords.to(device=device)
@@ -45,16 +53,48 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
             target_coords[:, 0, 1] = (2 * target_coords[:, 0, 1]) / height - 1
             # forward propagation
             coords, heatmaps = model(imgs)
-            # Calculate the average distance
-            avg_distance = dsntnn.calculate_avg_distances(coords, target_coords, width, height)
-            avg_distance_test += avg_distance.item()
+
+            # Append each distance to a list
+            tensor_of_distances = dsntnn.get_list_of_distances(coords, target_coords, width, height)
+            distances[count] = tensor_of_distances.item()
+            count += 1
+
+            if distances[count] < min_d:
+                min_d = distances[count]
+                pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
+                min_image["name"] = image_name
+                min_image["coord"] = pred_x, pred_y
+            elif distances[count] > max_d:
+                max_d = distances[count]
+                pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
+                max_image["name"] = image_name
+                max_image["coord"] = pred_x, pred_y
 
             # Print the image and the predicted nose location
             if show_images:
                 pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
                 show_predicted_location(pred_x, pred_y, image_name)
 
+
+    mean_d = np.mean(distances)
+    median_d = np.median(distances)
+
+    # Target: 5 px eud on average. std=10.
+
+    acc_3px = np.count_nonzero(distances <= 3)/len(distances)
+    acc_5px = np.count_nonzero(distances <= 5 and distances > 3)/len(distances)
+    acc_10px = np.count_nonzero(distances <= 10 and distances > 5)/len(distances)
+    acc_15px = np.count_nonzero(distances <= 15 and distances > 10)/len(distances)
+    acc_20px = np.count_nonzero(distances <= 20 and distances > 15)/len(distances)
+
     print("Avg distance error:", avg_distance_test/len(test_dataloader))
+
+    print("Displaying the best image with a distance of:", min_d)
+    x, y = min_image["coord"]
+    show_predicted_location(x, y, min_image["name"])
+    print("Displaying the worst image with a distance of:", max_d)
+    x, y = max_image["coord"]
+    show_predicted_location(x, y, max_image["name"])
 
 if __name__ == "__main__":
     # Get arguments from command line
@@ -91,7 +131,7 @@ if __name__ == "__main__":
     test_dataloader = torch.utils.data.DataLoader(
         dataset=test_dataset,
         batch_size=1,
-        shuffle=True
+        shuffle=False
     )
 
     evaluate(model, test_dataloader, show_images, device)
