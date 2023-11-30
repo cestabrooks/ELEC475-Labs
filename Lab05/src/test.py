@@ -3,12 +3,14 @@ import argparse
 from PIL import Image
 from torchvision import transforms
 import dsntnn
-import model2 as m
+import model3 as m
 import torch
 from custom_dataset import TestingDataset
 import cv2
 import os
 import numpy as np
+import time
+import matplotlib.pyplot as plt
 
 scale = 1
 def show_predicted_location(x, y, image_name):
@@ -30,7 +32,8 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
     print("Evaluating...")
     model.to(device=device)
     model.eval()
-    distances = np.empty(len(test_dataloader), dtype=int)
+    distances = np.empty(len(test_dataloader), dtype=float)
+    eval_times = np.empty(len(test_dataloader), dtype=float)
     count = 0
     max_d = 0
     min_d = 1000
@@ -39,6 +42,9 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
 
     with ((torch.no_grad())):
         for imgs, target_coords, width, height, image_name in test_dataloader:
+
+            start = time.perf_counter()
+
             imgs = imgs.to(device=device)
             target_coords = target_coords.to(device=device)
             target_coords = target_coords.to(dtype=torch.float32)
@@ -52,6 +58,9 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
             target_coords[:, 0, 1] = (2 * target_coords[:, 0, 1]) / height - 1
             # forward propagation
             coords, heatmaps = model(imgs)
+            #
+            end = time.perf_counter()
+            eval_times[count] = (end - start) * 1000
 
             # Append each distance to a list
             tensor_of_distances = dsntnn.get_list_of_distances(coords, target_coords, width, height)
@@ -62,17 +71,23 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
                 pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
                 min_image["name"] = image_name
                 min_image["coord"] = pred_x, pred_y
+                min_image['heatmap'] = heatmaps
             elif distances[count] > max_d:
                 max_d = distances[count]
                 pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
                 max_image["name"] = image_name
                 max_image["coord"] = pred_x, pred_y
+                max_image['heatmap'] = heatmaps
 
             count += 1
             # Print the image and the predicted nose location
             if show_images:
+                # Show images
                 pred_x, pred_y = dsntnn.convert_to_image_location(coords[:, 0, 0], coords[:, 0, 1], width, height)
                 show_predicted_location(pred_x, pred_y, image_name)
+                # Show heatmap
+                plt.imshow(heatmaps[0, 0].detach().cpu().numpy())
+                plt.show()
 
     # Target: 5 px eud on average. std=10.
 
@@ -80,7 +95,7 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
     std_d = np.std(distances)
     median_d = np.median(distances)
 
-    percent_perfect = 100 * np.count_nonzero(distances == 0)/len(distances)
+    percent_perfect = 100 * np.count_nonzero(distances < 1)/len(distances)
 
     acc_3px = 100 * np.count_nonzero(distances <= 3)/len(distances)
     acc_5px = 100 * (np.count_nonzero(distances <= 5)/len(distances))
@@ -102,12 +117,21 @@ def evaluate(model, test_dataloader, show_images, device="cpu"):
     print("acc_20px:", acc_20px)
     print("Precent not within 20px:", acc_gt20px)
 
+    avg_eval_time = "{:.3f}".format(np.mean(eval_times))
+    print("Average eval time in ms:", avg_eval_time)
+
     print("\nDisplaying the best image with a distance of:", min_d)
     x, y = min_image["coord"]
     show_predicted_location(x, y, min_image["name"])
+    # Show heatmap
+    plt.imshow(min_image['heatmap'][0, 0].detach().cpu().numpy())
+    plt.show()
     print("Displaying the worst image with a distance of:", max_d)
     x, y = max_image["coord"]
     show_predicted_location(x, y, max_image["name"])
+    # Show heatmap
+    plt.imshow(max_image['heatmap'][0, 0].detach().cpu().numpy())
+    plt.show()
 
 if __name__ == "__main__":
     # Get arguments from command line
@@ -130,7 +154,7 @@ if __name__ == "__main__":
     if str(args["display"]).upper() == "Y":
         show_images = True
 
-    model = m.CoordinateRegression_b1()
+    model = m.CoordinateRegression_b2()
     model.load_state_dict(torch.load(model_pth, map_location=torch.device(device)))
 
     transform = transforms.Compose([
