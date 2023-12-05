@@ -7,15 +7,16 @@ import model4 as m
 from torchvision import transforms
 from custom_dataset import CustomDataset
 from PIL import Image
+import os
 
-def train(model, optimizer, n_epochs, data_loader, validation_loader, device, plot_file, save_file):
+def train(model, optimizer, n_epochs, data_loader, validation_loader, device, plot_file, save_file, completed_epochs=0):
     print("Starting training...")
     model.to(device=device)
     train_losses = []
     validation_losses = []
     train_accuracy = []
     validation_accuracy = []
-    for epoch in range(0, n_epochs):
+    for epoch in range(completed_epochs, n_epochs):
         print("Epoch", epoch)
 
         model.train()
@@ -101,6 +102,19 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
         train_losses += [loss_train / len(data_loader)]  # update value of losses
         validation_losses += [loss_val / len(validation_loader)]
 
+
+        # save the model and optimizer
+        path = "./history/model_history_" + str(epoch) + ".pth"
+        opt_path = "./history/optimizer_history_" + str(epoch) + ".pth"
+        print("Saving model to: " + path)
+        print("Saving optimizer to: " + opt_path)
+        torch.save(model.state_dict(), path)
+        torch.save(optimizer.state_dict(), opt_path)
+
+        loss_file = open("./history/losses.txt", "a+")
+        loss_file.write(str(train_losses[-1]) + " " + str(validation_losses[-1]) + "\n")
+        loss_file.close()
+
     # plot the losses_train
     if save_file != None:
         torch.save(model.state_dict(), save_file)
@@ -139,6 +153,15 @@ if __name__ == "__main__":
 
     model = m.CoordinateRegression_b3()
 
+    # Loading previous model state
+    completed_epochs = 0
+    if "_history_" in save_pth:
+        print("Loading model: " + save_pth)
+        # Load the decoder weights
+        model.load_state_dict(torch.load(save_pth))
+        # Subtract from the required number of epochs remaining
+        completed_epochs = int(save_pth.split("_")[-1].split('.')[0]) + 1
+
     transform = transforms.Compose([
         transforms.Resize(size=(256, 256), interpolation=Image.BICUBIC),
         transforms.ToTensor(),
@@ -161,5 +184,19 @@ if __name__ == "__main__":
     )
 
     optimizer = torch.optim.RMSprop(model.parameters(), lr=2.5e-4)
+
+    # Load previous optimizer and clear loss history if we are starting over
+    loss_file = None
+    os.makedirs("./history/", exist_ok=True)
+    if "_history_" in save_pth:
+        print("Loading optimizer...")
+        # Load the optimizer
+        optimizer.load_state_dict(torch.load("./history/optimizer_history_" + str(completed_epochs - 1) + ".pth", map_location=device))
+        learning_rate = optimizer.param_groups[0]['lr']
+        print("   Resume learning rate at", optimizer.param_groups[0]['lr'])
+    else:
+        # Open existing for "writing" in order to clear it (since we are not resuming)
+        loss_file = open("./history/losses.txt", "w")
+        loss_file.close()
 
     train(model, optimizer, n_epoch, train_dataloader, validation_dataloader, device, loss_plot, save_pth)

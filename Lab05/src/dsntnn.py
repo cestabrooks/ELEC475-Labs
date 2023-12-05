@@ -23,7 +23,9 @@ import torch
 import torch.nn.functional
 
 
-# Functions Connor Added
+# -------------------- MODIFICATIONS ------------------------
+# These functions were added and were not included in the
+# original code created by Aiden Nibali
 def calculate_avg_distances(preds, targets, img_widths, img_heights):
     pred_x, pred_y = convert_to_image_location(preds[:, 0, 0], preds[:, 0, 1], img_widths, img_heights)
     target_x, target_y = convert_to_image_location(targets[:, 0, 0], targets[:, 0, 1], img_widths, img_heights)
@@ -53,7 +55,7 @@ def linear_expectation(probs, values):
         # Calculate expectation along axis `i`
         expectation.append((marg * values[len(expectation)]).sum(-1, keepdim=False))
     return torch.stack(expectation, -1)
-
+#------------------------------------------------------------
 
 def normalized_linspace(length, dtype=None, device=None):
     """Generate a vector with values ranging from -1 to 1.
