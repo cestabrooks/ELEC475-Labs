@@ -3,7 +3,7 @@ import argparse
 from PIL import Image
 from torchvision import transforms
 import dsntnn
-import model3 as m
+import model4 as m
 import torch
 from custom_dataset import TestingDataset
 import cv2
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     if str(args["display"]).upper() == "Y":
         show_images = True
 
-    model = m.CoordinateRegression_b2()
+    model = m.CoordinateRegression_b3()
     model.load_state_dict(torch.load(model_pth, map_location=torch.device(device)))
 
     transform = transforms.Compose([

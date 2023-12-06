@@ -9,7 +9,7 @@ from custom_dataset import CustomDataset
 from PIL import Image
 import os
 
-def train(model, optimizer, n_epochs, data_loader, validation_loader, device, plot_file, save_file, completed_epochs=0):
+def train(model, optimizer, scheduler, n_epochs, data_loader, validation_loader, device, plot_file, save_file, completed_epochs=0):
     print("Starting training...")
     model.to(device=device)
     train_losses = []
@@ -62,6 +62,8 @@ def train(model, optimizer, n_epochs, data_loader, validation_loader, device, pl
 
         avg_distance_train = avg_distance_train/len(data_loader)
         print("Train avg distance:", avg_distance_train)
+
+        scheduler.step()
 
         # Calculate validation loss
         model.eval()
@@ -185,6 +187,8 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.RMSprop(model.parameters(), lr=2.5e-4)
 
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer= optimizer, step_size=35, gamma=0.5)
+
     # Load previous optimizer and clear loss history if we are starting over
     loss_file = None
     os.makedirs("./history/", exist_ok=True)
@@ -199,4 +203,4 @@ if __name__ == "__main__":
         loss_file = open("./history/losses.txt", "w")
         loss_file.close()
 
-    train(model, optimizer, n_epoch, train_dataloader, validation_dataloader, device, loss_plot, save_pth)
+    train(model, optimizer, scheduler, n_epoch, train_dataloader, validation_dataloader, device, loss_plot, save_pth)

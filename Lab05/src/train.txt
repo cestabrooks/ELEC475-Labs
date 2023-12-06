@@ -1,1 +1,1 @@
-python train.py -save model2_50.pth -e 50 -b 16 -p loss_plt -cuda Y -mps N
+python train.py -save final_model.pth -e 50 -b 64 -p loss_plt_model4_scheduler -cuda Y -mps N
